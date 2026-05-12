@@ -7,6 +7,22 @@ body:
       value: |
         Thanks for suggesting an improvement! Please describe what you'd like to see.
 
+  - type: dropdown
+    id: category
+    attributes:
+      label: What area does this relate to?
+      description: Pick the closest match.
+      options:
+        - Camera streaming / Video
+        - Sensors / Entities
+        - Events / Notifications
+        - Setup / Configuration
+        - Automations
+        - UI / Dashboard
+        - Other
+    validations:
+      required: false
+
   - type: textarea
     id: description
     attributes:

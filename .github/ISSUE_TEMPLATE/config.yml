@@ -1,1 +1,8 @@
 blank_issues_enabled: false
+contact_links:
+  - name: Questions / Support
+    url: https://github.com/wealthystudent/ha-nanit/issues
+    about: Have a question or need help? Search existing issues first — your question may already be answered.
+  - name: Documentation
+    url: https://github.com/wealthystudent/ha-nanit#readme
+    about: Check the README for setup instructions, troubleshooting, and FAQ.

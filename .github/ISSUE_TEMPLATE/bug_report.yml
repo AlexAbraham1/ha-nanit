@@ -5,8 +5,45 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report a bug. Please fill in as much detail as you can — it helps us fix things faster.
+        Thanks for taking the time to report a bug!
 
+        Before filing, please check:
+        - [ ] I searched [existing issues](https://github.com/wealthystudent/ha-nanit/issues) and this hasn't been reported yet
+        - [ ] I'm running the latest version of the integration
+  - type: dropdown
+    id: category
+    attributes:
+      label: What area is this about?
+      description: Pick the closest match.
+      options:
+        - Setup / Configuration
+        - Camera streaming (live view, video)
+        - Connection issues (camera goes offline / unavailable)
+        - Sensors not updating
+        - Events / Notifications
+        - Performance / Slow
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant version
+      description: |
+        Found in [Settings → System → Repairs → System information](https://my.home-assistant.io/redirect/system_health/).
+
+        [![Open your Home Assistant instance and show the system information.](https://my.home-assistant.io/badges/system_health.svg)](https://my.home-assistant.io/redirect/system_health/)
+      placeholder: "e.g. 2026.2.0"
+    validations:
+      required: true
+  - type: input
+    id: integration-version
+    attributes:
+      label: Integration version
+      description: "Found in HACS → Nanit, or Settings → Devices & Services → Nanit."
+      placeholder: "e.g. 0.5.2"
+    validations:
+      required: true
   - type: dropdown
     id: install-type
     attributes:
@@ -19,7 +56,6 @@ body:
         - Home Assistant Core
     validations:
       required: true
-
   - type: dropdown
     id: architecture
     attributes:
@@ -31,30 +67,11 @@ body:
         - Other
     validations:
       required: true
-
-  - type: input
-    id: ha-version
-    attributes:
-      label: Home Assistant version
-      description: "Found in Settings → About"
-      placeholder: "e.g. 2026.2.0"
-    validations:
-      required: true
-
-  - type: input
-    id: integration-version
-    attributes:
-      label: Integration / add-on version
-      description: "Found in HACS or Settings → Devices & Services → Nanit"
-      placeholder: "e.g. 0.5.2"
-    validations:
-      required: true
-
   - type: textarea
     id: description
     attributes:
       label: Describe the bug
-      description: A clear description of what is happening and what you expected instead.
+      description: What is happening, and what did you expect instead?
       placeholder: |
         What happened:
         ...
@@ -63,30 +80,61 @@ body:
         ...
     validations:
       required: true
-
   - type: textarea
     id: steps
     attributes:
       label: Steps to reproduce
-      description: How can we reproduce this?
+      description: |
+        How can we reproduce this? If the issue happens randomly (e.g. camera drops offline), describe how often it happens and any patterns you've noticed.
       placeholder: |
         1. Go to ...
         2. Click on ...
         3. See error ...
+
+        Or for intermittent issues:
+        - Happens roughly every ...
+        - Seems to happen when ...
     validations:
       required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: |
+        Download your diagnostics file and drag it into this box. This gives us your configuration and camera state with sensitive data automatically removed.
 
+        **How to download:** [Settings → Devices & Services → Nanit → three dots (⋮) → Download diagnostics](https://my.home-assistant.io/redirect/integration/?domain=nanit)
+
+        [![Open your Nanit integration page.](https://my.home-assistant.io/badges/integration.svg)](https://my.home-assistant.io/redirect/integration/?domain=nanit)
+      placeholder: "Drag and drop your diagnostics JSON file here, or paste its contents."
+    validations:
+      required: false
   - type: textarea
     id: logs
     attributes:
-      label: Relevant logs
+      label: Logs
       description: |
-        Paste any relevant logs from Home Assistant or the add-on.
-        Integration logs: Settings → System → Logs (filter by "nanit")
+        Paste any relevant logs. To get detailed logs, enable debug logging for the integration:
+
+        <details>
+        <summary><b>How to enable debug logging</b> (click to expand)</summary>
+
+        Add this to your `configuration.yaml` and restart Home Assistant:
+
+        ```yaml
+        logger:
+          default: info
+          logs:
+            custom_components.nanit: debug
+            aionanit: debug
+        ```
+
+        Then reproduce the issue and grab the logs from [Settings → System → Logs](https://my.home-assistant.io/redirect/logs/) (filter by "nanit").
+
+        </details>
       render: text
     validations:
       required: false
-
   - type: textarea
     id: extra
     attributes:

@@ -52,12 +52,16 @@ Copy `custom_components/nanit/` into your HA `config/custom_components/` directo
 - 📷 Live camera stream (RTMPS)
 - 🌡️ Temperature & humidity sensors
 - 👁️ Motion & sound detection
-- 🫁 Breaths-per-minute & breathing alert (with Nanit Breathing Wear; available while tracking is active in the app)
+- 🫁 Breaths-per-minute & breathing alert (with Nanit Breathing Wear; available while tracking is active)
+- 🫁 `button.<baby>_start_breathing_tracking` — one-shot button that starts a Breathing Motion Monitoring session, mirroring the **Start** action in the Nanit app
+- 🫁 `binary_sensor.<baby>_breathing_tracking` (device class `running`) — on while a session is actively pushing breathing readings
 - 💡 Night light switch
 - 🔌 Camera power switch
 
-> [!NOTE]
-> The breathing entities mirror the app for dashboards and automations. The Nanit app remains the safety-critical alerting path — don't rely on Home Assistant for that.
+> [!IMPORTANT]
+> **Safety.** The breathing entities (`breaths_per_minute`, `breathing_alert`, `breathing_tracking`, and the start button) are a **display/convenience mirror** of the Nanit app's Breathing Motion Monitoring feature — they are **not** a safety device. **The Nanit app remains the safety-critical breathing-alarm path.** Never rely on these Home Assistant entities for apnea/breathing safety alerting.
+>
+> Pressing `button.<baby>_start_breathing_tracking` mirrors the app's "start" action; there is no stop button because the camera stops tracking on its own when the baby leaves the crib (same as the app). **It is not yet verified whether starting a session from Home Assistant also engages the Nanit app's phone-alert pipeline.** Until this is confirmed, if you rely on phone alerts, start breathing tracking from the Nanit app itself rather than from this button.
 
 **Sound & Light Machine** (if linked):
 - Power, sound, and light switches
@@ -75,6 +79,7 @@ A companion Lovelace card is **bundled with the integration** — no HACS fronte
 The card provides:
 - Live camera stream with loading indicator
 - Temperature & humidity overlays, with optional semantic entity overrides for the displayed sensors
+- Breaths-per-minute overlay pill (auto-detected, or overridden via `breathing_entity_id`), turning red and pulsing when the breathing-alert entity is on
 - Motion & sound activity indicators
 - Optional baby name and connectivity status display
 - Header power button (can be hidden in card settings)
@@ -90,6 +95,8 @@ type: custom:nanit-card
 camera_entity_id: camera.nursery
 temperature_entity_id: sensor.nursery_temperature
 humidity_entity_id: sensor.nursery_humidity
+breathing_entity_id: sensor.nursery_breaths_per_minute
+breathing_alert_entity_id: binary_sensor.nursery_breathing_alert
 ```
 
 > [!NOTE]

@@ -107,6 +107,7 @@
       "motion": { "name": "Motion" },
       "sound": { "name": "Sound" },
       "breathing_alert": { "name": "Breathing Alert" },
+      "breathing_tracking": { "name": "Breathing tracking" },
       "connectivity": { "name": "Connectivity" },
       "sl_connectivity": { "name": "Connectivity" }
     },

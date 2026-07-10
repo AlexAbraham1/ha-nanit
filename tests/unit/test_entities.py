@@ -44,6 +44,7 @@ from custom_components.nanit.binary_sensor import (
     CLOUD_BINARY_SENSORS,
     NanitBinarySensor,
     NanitBreathingAlertBinarySensor,
+    NanitBreathingTrackingBinarySensor,
     NanitCloudBinarySensor,
 )
 from custom_components.nanit.camera import NanitCameraEntity
@@ -262,6 +263,18 @@ def test_breathing_alert_reflects_flag_and_freshness() -> None:
     assert on.available is True
     assert off.is_on is False
     assert stale.available is False
+
+
+def test_breathing_tracking_binary_sensor_on_iff_fresh_and_measuring() -> None:
+    """binary_sensor.breathing_tracking is ON iff a fresh session is measuring."""
+    on = NanitBreathingTrackingBinarySensor(_push_coordinator(_breathing_state(is_measuring=True)))
+    stale = NanitBreathingTrackingBinarySensor(
+        _push_coordinator(_breathing_state(is_measuring=True, age_seconds=999))
+    )
+
+    assert on.is_on is True
+    assert stale.available is True
+    assert stale.is_on is False
 
 
 def test_cloud_binary_motion_on_when_event_within_window() -> None:

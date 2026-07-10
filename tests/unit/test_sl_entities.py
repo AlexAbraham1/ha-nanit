@@ -959,8 +959,9 @@ async def test_binary_sensor_async_setup_entry_creates_sl_connectivity() -> None
     await binary_sensor_platform.async_setup_entry(MagicMock(), entry, async_add_entities)
 
     entities = async_add_entities.call_args.args[0]
-    # 1 push binary sensor + 1 breathing alert + 2 cloud binary sensors + 1 S&L connectivity = 5
-    assert len(entities) == 5
+    # 1 push binary sensor + 1 breathing alert + 1 breathing tracking + 2 cloud binary sensors
+    # + 1 S&L connectivity = 6
+    assert len(entities) == 6
 
 
 # ---------------------------------------------------------------------------

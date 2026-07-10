@@ -15,6 +15,19 @@
       'unique_id': 'cam_1_breathing_alert',
     }),
     dict({
+      'class': 'NanitBreathingTrackingBinarySensor',
+      'device_class': <BinarySensorDeviceClass.RUNNING: 'running'>,
+      'device_identifiers': list([
+        tuple(
+          'nanit',
+          'cam_1',
+        ),
+      ]),
+      'entity_category': None,
+      'translation_key': 'breathing_tracking',
+      'unique_id': 'cam_1_breathing_tracking',
+    }),
+    dict({
       'class': 'NanitBinarySensor',
       'device_class': <BinarySensorDeviceClass.CONNECTIVITY: 'connectivity'>,
       'device_identifiers': list([
@@ -43,6 +56,19 @@
       'entity_category': None,
       'translation_key': 'breathing_alert',
       'unique_id': 'cam_1_breathing_alert',
+    }),
+    dict({
+      'class': 'NanitBreathingTrackingBinarySensor',
+      'device_class': <BinarySensorDeviceClass.RUNNING: 'running'>,
+      'device_identifiers': list([
+        tuple(
+          'nanit',
+          'cam_1',
+        ),
+      ]),
+      'entity_category': None,
+      'translation_key': 'breathing_tracking',
+      'unique_id': 'cam_1_breathing_tracking',
     }),
     dict({
       'class': 'NanitCloudBinarySensor',

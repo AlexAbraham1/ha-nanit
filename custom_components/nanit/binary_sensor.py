@@ -92,6 +92,7 @@ async def async_setup_entry(
             entities.append(NanitBinarySensor(cam_data.push_coordinator, push_desc))
 
         entities.append(NanitBreathingAlertBinarySensor(cam_data.push_coordinator))
+        entities.append(NanitBreathingTrackingBinarySensor(cam_data.push_coordinator))
 
         if cam_data.cloud_coordinator is not None:
             for cloud_desc in CLOUD_BINARY_SENSORS:
@@ -178,6 +179,34 @@ class NanitBreathingAlertBinarySensor(NanitEntity, BinarySensorEntity):
         if self.coordinator.data is None:
             return None
         return self.coordinator.data.breathing.is_alert
+
+
+class NanitBreathingTrackingBinarySensor(NanitEntity, BinarySensorEntity):
+    """Whether a Breathing Motion Monitoring session is currently running.
+
+    ON while the camera is pushing fresh breathing frames (Breathing Wear on
+    the baby, tracking active). Unlike the bpm/alert entities this stays
+    available and reports OFF when idle, so it can answer "is tracking on?"
+    for dashboards and automations. Display mirror only — not a safety device.
+    """
+
+    _attr_translation_key = "breathing_tracking"
+    _attr_device_class = BinarySensorDeviceClass.RUNNING
+
+    def __init__(self, coordinator: NanitPushCoordinator) -> None:
+        """Initialize."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.camera.uid}_breathing_tracking"
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return True while a fresh breathing session is measuring."""
+        if self.coordinator.data is None:
+            return None
+        return (
+            breathing_is_fresh(self.coordinator.data)
+            and self.coordinator.data.breathing.is_measuring
+        )
 
 
 class NanitCloudBinarySensor(NanitCloudEntity, BinarySensorEntity):

@@ -47,13 +47,13 @@ from custom_components.nanit.binary_sensor import (
     NanitBreathingTrackingBinarySensor,
     NanitCloudBinarySensor,
 )
+from custom_components.nanit.button import NanitStartBreathingButton
 from custom_components.nanit.camera import NanitCameraEntity
 from custom_components.nanit.const import CLOUD_EVENT_WINDOW
 from custom_components.nanit.coordinator import (
     _AVAILABILITY_GRACE_SECONDS,
     NanitPushCoordinator,
 )
-from custom_components.nanit.button import NanitStartBreathingButton
 from custom_components.nanit.media_player import NanitMediaPlayer
 from custom_components.nanit.sensor import SENSORS, NanitBreathingRateSensor, NanitSensor
 from custom_components.nanit.switch import SWITCHES, NanitSwitch

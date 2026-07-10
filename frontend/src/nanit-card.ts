@@ -313,8 +313,14 @@ export class NanitCard extends LitElement {
 
     const breathingEntity = this._config.breathing_entity_id || entities.breathing;
     const alertEntity = this._config.breathing_alert_entity_id || entities.breathing_alert;
-    if (isEntityAvailable(this.hass, breathingEntity)) {
-      const bpm = this.hass.states[breathingEntity!].state;
+    const bpmState = breathingEntity ? this.hass.states[breathingEntity]?.state : undefined;
+    if (
+      isEntityAvailable(this.hass, breathingEntity) &&
+      bpmState !== undefined &&
+      bpmState !== "unavailable" &&
+      bpmState !== "unknown"
+    ) {
+      const bpm = bpmState;
       const alertOn =
         isEntityAvailable(this.hass, alertEntity) &&
         this.hass.states[alertEntity!].state === "on";

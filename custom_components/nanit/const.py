@@ -16,6 +16,7 @@ PLATFORMS = [
     Platform.SELECT,
     Platform.MEDIA_PLAYER,
     Platform.CAMERA,
+    Platform.BUTTON,
 ]
 
 # Cloud event detection window (seconds)

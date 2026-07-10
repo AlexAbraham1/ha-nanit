@@ -131,6 +131,9 @@
     },
     "camera": {
       "camera": { "name": "Camera" }
+    },
+    "button": {
+      "start_breathing_tracking": { "name": "Start breathing tracking" }
     }
   }
 }

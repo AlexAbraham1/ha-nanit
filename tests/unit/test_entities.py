@@ -53,6 +53,7 @@ from custom_components.nanit.coordinator import (
     _AVAILABILITY_GRACE_SECONDS,
     NanitPushCoordinator,
 )
+from custom_components.nanit.button import NanitStartBreathingButton
 from custom_components.nanit.media_player import NanitMediaPlayer
 from custom_components.nanit.sensor import SENSORS, NanitBreathingRateSensor, NanitSensor
 from custom_components.nanit.switch import SWITCHES, NanitSwitch
@@ -766,3 +767,13 @@ def test_camera_does_not_invalidate_when_no_stream_cached() -> None:
 
     assert entity.stream is None
     assert entity._prev_last_seen == t2
+
+
+async def test_start_breathing_button_presses_camera() -> None:
+    """Pressing the button calls camera.async_start_breathing_tracking()."""
+    camera = MagicMock()
+    camera.uid = "cam_uid_1"
+    camera.async_start_breathing_tracking = AsyncMock()
+    button = NanitStartBreathingButton(_push_coordinator(_camera_state()), camera)
+    await button.async_press()
+    camera.async_start_breathing_tracking.assert_awaited_once()

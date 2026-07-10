@@ -48,6 +48,9 @@ from custom_components.nanit import (
     binary_sensor as binary_sensor_platform,
 )
 from custom_components.nanit import (
+    button as button_platform,
+)
+from custom_components.nanit import (
     camera as camera_platform,
 )
 from custom_components.nanit import (
@@ -231,7 +234,7 @@ async def _setup_and_capture(
 
 
 # ---------------------------------------------------------------------------
-# Snapshot tests -- 7 platforms x 2 scenarios = 14 test cases
+# Snapshot tests -- 9 platforms x 2 scenarios = 18 test cases
 # ---------------------------------------------------------------------------
 
 
@@ -314,5 +317,15 @@ class TestEntityRegistration:
         snapshot: SnapshotAssertion,
     ) -> None:
         entities = await _setup_and_capture(media_player_platform, cam_data_factory())
+        assert _serialize_entities(entities) == snapshot
+        assert len(entities) == 1
+
+    async def test_button(
+        self,
+        scenario_name: str,
+        cam_data_factory: Any,
+        snapshot: SnapshotAssertion,
+    ) -> None:
+        entities = await _setup_and_capture(button_platform, cam_data_factory())
         assert _serialize_entities(entities) == snapshot
         assert len(entities) == 1

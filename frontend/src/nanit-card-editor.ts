@@ -12,7 +12,12 @@ export class NanitCardEditor extends LitElement {
   }
 
   private _entityChanged(
-    key: "camera_entity_id" | "temperature_entity_id" | "humidity_entity_id",
+    key:
+      | "camera_entity_id"
+      | "temperature_entity_id"
+      | "humidity_entity_id"
+      | "breathing_entity_id"
+      | "breathing_alert_entity_id",
     ev: CustomEvent,
   ): void {
     const value = (ev.detail as { value?: string }).value || undefined;
@@ -118,6 +123,22 @@ export class NanitCardEditor extends LitElement {
           .label=${"Humidity Entity Override"}
           allow-custom-entity
           @value-changed=${(ev: CustomEvent) => this._entityChanged("humidity_entity_id", ev)}
+        ></ha-entity-picker>
+        <ha-entity-picker
+          .hass=${this.hass}
+          .value=${this._config.breathing_entity_id || ""}
+          .includeDomains=${["sensor"]}
+          .label=${"Breathing Rate Entity Override"}
+          allow-custom-entity
+          @value-changed=${(ev: CustomEvent) => this._entityChanged("breathing_entity_id", ev)}
+        ></ha-entity-picker>
+        <ha-entity-picker
+          .hass=${this.hass}
+          .value=${this._config.breathing_alert_entity_id || ""}
+          .includeDomains=${["binary_sensor"]}
+          .label=${"Breathing Alert Entity Override"}
+          allow-custom-entity
+          @value-changed=${(ev: CustomEvent) => this._entityChanged("breathing_alert_entity_id", ev)}
         ></ha-entity-picker>
       </div>
     `;

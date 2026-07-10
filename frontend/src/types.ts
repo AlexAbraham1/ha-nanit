@@ -29,6 +29,8 @@ export interface NanitCardConfig {
   camera_entity_id?: string;
   temperature_entity_id?: string;
   humidity_entity_id?: string;
+  breathing_entity_id?: string;
+  breathing_alert_entity_id?: string;
   hide_baby_name?: boolean;
   hide_connectivity_status?: boolean;
   hide_power_button?: boolean;
@@ -41,6 +43,8 @@ export interface NanitEntities {
   power?: string;
   temperature?: string;
   humidity?: string;
+  breathing?: string;
+  breathing_alert?: string;
   light?: string;
   motion?: string;
   sound?: string;

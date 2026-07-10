@@ -50,11 +50,14 @@ function assignEntities(result: NanitEntities, eids: string[], hass: HomeAssista
       if (deviceClass === "temperature") result.temperature = eid;
       else if (deviceClass === "humidity") result.humidity = eid;
       else if (deviceClass === "illuminance") result.light = eid;
+      else if (suffix.endsWith("_breaths_per_minute")) result.breathing = eid;
     } else if (domain === "binary_sensor") {
       if (deviceClass === "motion" || suffix.endsWith("_motion") || suffix.endsWith("_cloud_motion")) {
         result.motion = eid;
       } else if (deviceClass === "sound" || suffix.endsWith("_sound") || suffix.endsWith("_cloud_sound")) {
         result.sound = eid;
+      } else if (suffix.endsWith("_breathing_alert")) {
+        result.breathing_alert = eid;
       }
     } else if (domain === "switch" && suffix.endsWith("_camera_power")) {
       result.power = eid;

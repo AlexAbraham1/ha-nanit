@@ -311,6 +311,24 @@ export class NanitCard extends LitElement {
       `);
     }
 
+    const breathingEntity = this._config.breathing_entity_id || entities.breathing;
+    const alertEntity = this._config.breathing_alert_entity_id || entities.breathing_alert;
+    if (isEntityAvailable(this.hass, breathingEntity)) {
+      const bpm = this.hass.states[breathingEntity!].state;
+      const alertOn =
+        isEntityAvailable(this.hass, alertEntity) &&
+        this.hass.states[alertEntity!].state === "on";
+      pills.push(html`
+        <div
+          class="pill pill-breathing ${alertOn ? "breathing-alert" : ""}"
+          @click=${() => this._fireMoreInfo(breathingEntity!)}
+        >
+          <ha-icon icon="mdi:lungs"></ha-icon>
+          <span>${bpm} bpm</span>
+        </div>
+      `);
+    }
+
     if (pills.length === 0) return html``;
     return html`<div class="overlay-top">${pills}</div>`;
   }

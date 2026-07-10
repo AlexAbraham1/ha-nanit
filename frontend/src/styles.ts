@@ -347,6 +347,20 @@ export const cardStyles = css`
     color: rgba(255, 255, 255, 0.85);
   }
 
+  .pill-breathing.breathing-alert {
+    background: rgba(220, 38, 38, 0.85);
+    animation: nanit-breathing-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes nanit-breathing-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55); }
+    50% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pill-breathing.breathing-alert { animation: none; }
+  }
+
   .pill-temp {
     color: var(--nanit-amber);
   }

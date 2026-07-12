@@ -15,6 +15,7 @@ from ..proto import (
     Request,
     Response,
     Settings,
+    StingStart,
     Streaming,
 )
 
@@ -53,6 +54,7 @@ def build_request(
     get_settings: GetSettings | None = None,
     get_sensor_data: GetSensorData | None = None,
     get_control: GetControl | None = None,
+    sting_start: StingStart | None = None,
 ) -> bytes:
     """Build a REQUEST message with the given payload.
 
@@ -69,6 +71,7 @@ def build_request(
             get_settings=get_settings,
             get_sensor_data=get_sensor_data,
             get_control=get_control,
+            sting_start=sting_start,
         ).items()
         if v is not None
     }

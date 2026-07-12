@@ -98,6 +98,22 @@ class TestBuildRequest:
         assert msg.request.id == 3
         assert msg.request.type == RequestType.GET_STATUS
 
+    def test_build_request_includes_sting_start(self) -> None:
+        from custom_components.nanit.aionanit.proto import Point, RequestType, StingStart
+        from custom_components.nanit.aionanit.ws.protocol import build_request, decode_message
+
+        data = build_request(
+            5,
+            RequestType.PUT_STING_START,
+            sting_start=StingStart(win_location=Point(x=10, y=20), session_id="s1"),
+        )
+        msg = decode_message(data)
+        assert msg.request.id == 5
+        assert msg.request.type == RequestType.PUT_STING_START
+        assert msg.request.sting_start.win_location.x == 10
+        assert msg.request.sting_start.win_location.y == 20
+        assert msg.request.sting_start.session_id == "s1"
+
 
 class TestExtractResponse:
     def test_returns_response_for_response_message(self) -> None:

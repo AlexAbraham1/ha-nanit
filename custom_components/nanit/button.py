@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import NanitConfigEntry
 from .aionanit.camera import NanitCamera
+from .aionanit.exceptions import BreathingStartError
 from .coordinator import NanitPushCoordinator
 from .entity import NanitEntity
 
@@ -45,4 +47,7 @@ class NanitStartBreathingButton(NanitEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         """Send PUT_STING_START to the camera."""
-        await self._camera.async_start_breathing_tracking()
+        try:
+            await self._camera.async_start_breathing_tracking()
+        except BreathingStartError as err:
+            raise HomeAssistantError(f"Could not start breathing monitoring: {err}") from err

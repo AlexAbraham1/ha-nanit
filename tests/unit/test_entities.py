@@ -838,3 +838,19 @@ async def test_start_breathing_button_presses_camera() -> None:
     button = NanitStartBreathingButton(_push_coordinator(_camera_state()), camera)
     await button.async_press()
     camera.async_start_breathing_tracking.assert_awaited_once()
+
+
+async def test_start_breathing_button_surfaces_error() -> None:
+    """A BreathingStartError from the camera surfaces as HomeAssistantError."""
+    from homeassistant.exceptions import HomeAssistantError
+
+    from custom_components.nanit.aionanit.exceptions import BreathingStartError
+
+    camera = MagicMock()
+    camera.uid = "cam_uid_1"
+    camera.async_start_breathing_tracking = AsyncMock(
+        side_effect=BreathingStartError("no band detected")
+    )
+    button = NanitStartBreathingButton(_push_coordinator(_camera_state()), camera)
+    with pytest.raises(HomeAssistantError):
+        await button.async_press()

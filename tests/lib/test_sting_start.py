@@ -8,11 +8,11 @@ from unittest.mock import AsyncMock, MagicMock
 import aiohttp
 import pytest
 
-from aionanit.auth import TokenManager
-from aionanit.camera import NanitCamera
-from aionanit.proto import RequestType, Response
-from aionanit.rest import NanitRestClient
-from aionanit.ws.protocol import decode_message
+from custom_components.nanit.aionanit.auth import TokenManager
+from custom_components.nanit.aionanit.camera import NanitCamera
+from custom_components.nanit.aionanit.proto import RequestType, Response
+from custom_components.nanit.aionanit.rest import NanitRestClient
+from custom_components.nanit.aionanit.ws.protocol import decode_message
 
 
 def _make_camera() -> NanitCamera:

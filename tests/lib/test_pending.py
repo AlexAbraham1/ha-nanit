@@ -6,8 +6,8 @@ import asyncio
 
 import pytest
 
-from aionanit.proto import Response
-from aionanit.ws.pending import PendingRequests
+from custom_components.nanit.aionanit.proto import Response
+from custom_components.nanit.aionanit.ws.pending import PendingRequests
 
 
 class TestNextId:

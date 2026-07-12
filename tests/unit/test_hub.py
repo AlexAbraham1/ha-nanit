@@ -44,7 +44,7 @@ def _make_mock_camera(uid: str, baby_uid: str) -> MagicMock:
     return cam
 
 
-aionanit = importlib.import_module("aionanit")
+aionanit = importlib.import_module("custom_components.nanit.aionanit")
 NanitAuthError = aionanit.NanitAuthError
 NanitConnectionError = aionanit.NanitConnectionError
 

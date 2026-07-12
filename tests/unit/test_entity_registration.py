@@ -25,7 +25,7 @@ from syrupy.assertion import SnapshotAssertion
 
 _ = sys.modules.setdefault("turbojpeg", MagicMock(TurboJPEG=MagicMock()))
 
-_MODELS = importlib.import_module("aionanit.models")
+_MODELS = importlib.import_module("custom_components.nanit.aionanit.models")
 Baby = _MODELS.Baby
 CameraState = _MODELS.CameraState
 ConnectionInfo = _MODELS.ConnectionInfo

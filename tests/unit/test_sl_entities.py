@@ -29,7 +29,7 @@ from custom_components.nanit.light import (
 from custom_components.nanit.select import NanitSoundSelect, NanitSoundTimerSelect
 from custom_components.nanit.switch import NanitSLPowerSwitch, NanitSLSoundSwitch
 
-_MODELS = importlib.import_module("aionanit.models")
+_MODELS = importlib.import_module("custom_components.nanit.aionanit.models")
 Baby = _MODELS.Baby
 CameraState = _MODELS.CameraState
 CloudEvent = _MODELS.CloudEvent

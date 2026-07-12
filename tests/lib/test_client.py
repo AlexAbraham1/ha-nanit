@@ -7,9 +7,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 
-from aionanit.client import NanitClient
-from aionanit.exceptions import NanitAuthError, NanitMfaRequiredError
-from aionanit.models import Baby
+from custom_components.nanit.aionanit.client import NanitClient
+from custom_components.nanit.aionanit.exceptions import NanitAuthError, NanitMfaRequiredError
+from custom_components.nanit.aionanit.models import Baby
 
 
 def _make_client() -> tuple[NanitClient, MagicMock]:

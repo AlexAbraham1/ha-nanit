@@ -22,9 +22,8 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from aionanit.models import CameraState, NetworkInfo
-
 from . import NanitConfigEntry
+from .aionanit.models import CameraState, NetworkInfo
 from .aionanit_sl.models import SoundLightFullState
 from .coordinator import NanitNetworkCoordinator, NanitPushCoordinator, NanitSoundLightCoordinator
 from .entity import (

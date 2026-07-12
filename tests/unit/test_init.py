@@ -20,7 +20,7 @@ from custom_components.nanit.const import (
 
 from .conftest import MOCK_BABY_1, MOCK_EMAIL, mock_entry_data_v1, mock_entry_data_v2
 
-aionanit = importlib.import_module("aionanit")
+aionanit = importlib.import_module("custom_components.nanit.aionanit")
 NanitAuthError = aionanit.NanitAuthError
 NanitConnectionError = aionanit.NanitConnectionError
 

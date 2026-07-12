@@ -7,8 +7,7 @@ import time
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from aionanit.models import CameraState
-
+from .aionanit.models import CameraState
 from .const import BREATHING_STALE_AFTER, DOMAIN
 from .coordinator import (
     NanitCloudCoordinator,

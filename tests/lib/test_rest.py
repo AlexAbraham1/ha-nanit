@@ -6,13 +6,13 @@ import pytest
 from aiohttp import ClientConnectionError, ClientSession
 from aioresponses import aioresponses
 
-from aionanit.exceptions import (
+from custom_components.nanit.aionanit.exceptions import (
     NanitAuthError,
     NanitConnectionError,
     NanitMfaRequiredError,
 )
-from aionanit.models import Baby, CloudEvent
-from aionanit.rest import DEFAULT_BASE_URL, NanitRestClient
+from custom_components.nanit.aionanit.models import Baby, CloudEvent
+from custom_components.nanit.aionanit.rest import DEFAULT_BASE_URL, NanitRestClient
 
 LOGIN_URL = f"{DEFAULT_BASE_URL}/login"
 REFRESH_URL = f"{DEFAULT_BASE_URL}/tokens/refresh"

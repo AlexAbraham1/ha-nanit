@@ -17,13 +17,12 @@ from homeassistant.const import CONF_ACCESS_TOKEN
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import issue_registry as ir
 
-from aionanit.exceptions import (
+from .aionanit.exceptions import (
     NanitAuthError,
     NanitCameraUnavailable,
     NanitConnectionError,
 )
-from aionanit.models import Baby
-
+from .aionanit.models import Baby
 from .aionanit_sl.sound_light import NanitSoundLight
 from .const import CONF_CAMERA_IPS, CONF_REFRESH_TOKEN, CONF_SPEAKER_IPS, DOMAIN
 from .coordinator import (
@@ -35,9 +34,8 @@ from .coordinator import (
 from .sanitize import display_name
 
 if TYPE_CHECKING:
-    from aionanit import NanitCamera, NanitClient
-
     from . import NanitConfigEntry
+    from .aionanit import NanitCamera, NanitClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,7 +75,7 @@ class NanitHub:
         entry: NanitConfigEntry,
     ) -> None:
         """Initialize the hub with an existing session and config entry."""
-        from aionanit.client import NanitClient
+        from .aionanit.client import NanitClient
 
         self._hass = hass
         self._entry = entry

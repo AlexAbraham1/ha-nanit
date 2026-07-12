@@ -7,17 +7,17 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 import aiohttp
 import pytest
 
-from aionanit.auth import TokenManager
-from aionanit.camera import (
+from custom_components.nanit.aionanit.auth import TokenManager
+from custom_components.nanit.aionanit.camera import (
     _FRESH_CONNECTION_WINDOW,
     GetStatus,
     NanitCamera,
     RequestType,
     Response,
 )
-from aionanit.exceptions import NanitTransportError
-from aionanit.models import TransportKind
-from aionanit.rest import NanitRestClient
+from custom_components.nanit.aionanit.exceptions import NanitTransportError
+from custom_components.nanit.aionanit.models import TransportKind
+from custom_components.nanit.aionanit.rest import NanitRestClient
 
 
 def _make_camera() -> tuple[NanitCamera, MagicMock]:
@@ -97,8 +97,10 @@ async def test_token_refresh_forces_reconnect_before_expiry() -> None:
     camera._transport.async_force_reconnect = AsyncMock(side_effect=_force_and_stop)
 
     with (
-        patch("aionanit.camera.time.monotonic", return_value=1000.0),
-        patch("aionanit.camera.asyncio.sleep", AsyncMock(return_value=None)),
+        patch("custom_components.nanit.aionanit.camera.time.monotonic", return_value=1000.0),
+        patch(
+            "custom_components.nanit.aionanit.camera.asyncio.sleep", AsyncMock(return_value=None)
+        ),
     ):
         await asyncio.wait_for(camera._token_refresh_loop(), timeout=0.1)
 

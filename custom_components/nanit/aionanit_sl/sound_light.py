@@ -10,10 +10,9 @@ from collections.abc import Callable
 
 import aiohttp
 
-from aionanit import NanitConnectionError
-from aionanit.auth import TokenManager
-from aionanit.rest import NanitRestClient
-
+from ..aionanit import NanitConnectionError
+from ..aionanit.auth import TokenManager
+from ..aionanit.rest import NanitRestClient
 from .exceptions import NanitTransportError
 from .models import (
     SoundLightEvent,
@@ -320,7 +319,7 @@ class NanitSoundLight:
                 timeout=aiohttp.ClientTimeout(total=15),
             ) as resp:
                 if resp.status == 401:
-                    from aionanit import NanitAuthError
+                    from ..aionanit import NanitAuthError
 
                     raise NanitAuthError("Access token invalid for udtokens") from err
                 if resp.status != 200:

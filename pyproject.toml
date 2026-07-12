@@ -1,5 +1,5 @@
 # Root pyproject.toml — shared tooling config for the ha-nanit monorepo.
-# The aionanit library has its own pyproject.toml in packages/aionanit/.
+# aionanit is vendored under custom_components/nanit/aionanit/.
 
 [tool.ruff]
 target-version = "py313"
@@ -37,13 +37,13 @@ ignore = [
 "tools/**" = ["D", "T20", "SIM117"]
 "**/proto/*_pb2.py" = ["ALL"]
 "**/proto/*_pb2.pyi" = ["ALL"]
-"packages/aionanit/**" = ["D", "N818", "BLE001", "SIM105", "SIM117", "E402", "RUF059", "C408"]
+"custom_components/nanit/aionanit/**" = ["D", "N818", "BLE001", "SIM105", "SIM117", "E402", "RUF059", "C408"]
 "custom_components/nanit/config_flow.py" = ["BLE001"]
 "custom_components/nanit/aionanit_sl/**" = ["BLE001", "D", "SIM105"]
 "tests/unit/test_sl_*" = ["BLE001", "SIM105"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["aionanit", "custom_components.nanit"]
+known-first-party = ["custom_components.nanit"]
 
 [tool.mypy]
 python_version = "3.14"
@@ -53,11 +53,11 @@ warn_unused_configs = true
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["aionanit.proto", "aionanit.proto.*"]
+module = ["nanit.aionanit.proto", "nanit.aionanit.proto.*"]
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "aionanit.camera"
+module = "nanit.aionanit.camera"
 disable_error_code = ["attr-defined"]
 
 [[tool.mypy.overrides]]

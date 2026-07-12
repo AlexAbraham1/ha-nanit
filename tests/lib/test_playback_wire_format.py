@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
-from aionanit.camera import NanitCamera
-from aionanit.models import CameraEventKind, PlaybackState
-from aionanit.proto import (
+from custom_components.nanit.aionanit.camera import NanitCamera
+from custom_components.nanit.aionanit.models import CameraEventKind, PlaybackState
+from custom_components.nanit.aionanit.proto import (
     Message,
     MessageType,
     Playback,
@@ -19,7 +19,7 @@ from aionanit.proto import (
     RequestType,
     Response,
 )
-from aionanit.ws.protocol import build_request, decode_message
+from custom_components.nanit.aionanit.ws.protocol import build_request, decode_message
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -32,8 +32,8 @@ def _make_camera() -> NanitCamera:
 
     import aiohttp
 
-    from aionanit.auth import TokenManager
-    from aionanit.rest import NanitRestClient
+    from custom_components.nanit.aionanit.auth import TokenManager
+    from custom_components.nanit.aionanit.rest import NanitRestClient
 
     session = MagicMock(spec=aiohttp.ClientSession)
     rest = MagicMock(spec=NanitRestClient)

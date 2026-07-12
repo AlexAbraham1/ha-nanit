@@ -14,10 +14,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from aionanit import NanitCamera
-from aionanit.models import CameraState
-
 from . import NanitConfigEntry
+from .aionanit import NanitCamera
+from .aionanit.models import CameraState
 from .aionanit_sl.exceptions import NanitTransportError
 from .coordinator import NanitPushCoordinator, NanitSoundLightCoordinator
 from .entity import NanitEntity, NanitSoundLightEntity

@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from aionanit.auth import TokenManager
-from aionanit.exceptions import NanitAuthError
+from custom_components.nanit.aionanit.auth import TokenManager
+from custom_components.nanit.aionanit.exceptions import NanitAuthError
 
 
 @pytest.fixture

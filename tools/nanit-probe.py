@@ -25,7 +25,6 @@ from pathlib import Path
 from typing import Any
 
 import aiohttp
-
 from aionanit import NanitClient
 from aionanit.exceptions import NanitError
 from aionanit.proto import (

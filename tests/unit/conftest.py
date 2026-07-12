@@ -9,7 +9,7 @@ from homeassistant.const import CONF_ACCESS_TOKEN, CONF_EMAIL, CONF_PASSWORD
 from pytest_homeassistant_custom_component.syrupy import HomeAssistantSnapshotExtension
 from syrupy.assertion import SnapshotAssertion
 
-from aionanit.models import Baby
+from custom_components.nanit.aionanit.models import Baby
 from custom_components.nanit.const import (
     CONF_BABY_NAME,
     CONF_BABY_UID,
@@ -86,7 +86,7 @@ def snapshot(snapshot: SnapshotAssertion) -> SnapshotAssertion:
 def mock_nanit_client():
     """Patch NanitClient and NanitCloudCoordinator for the entire integration."""
     with (
-        patch("aionanit.client.NanitClient", autospec=True) as mock_cls,
+        patch("custom_components.nanit.aionanit.client.NanitClient", autospec=True) as mock_cls,
         patch("custom_components.nanit.hub.NanitCloudCoordinator") as mock_cloud_cls,
         patch("custom_components.nanit.hub.NanitNetworkCoordinator") as mock_net_cls,
     ):

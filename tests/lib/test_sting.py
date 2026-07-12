@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from aionanit.models import BreathingState
-from aionanit.parsers import _parse_sting_status
-from aionanit.proto import Request, RequestType, StingStatus
+from custom_components.nanit.aionanit.models import BreathingState
+from custom_components.nanit.aionanit.parsers import _parse_sting_status
+from custom_components.nanit.aionanit.proto import Request, RequestType, StingStatus
 
 # A real PUT_STING_STATUS field-23 payload captured from a Nanit Pro camera with
 # Breathing Wear active. Ground-truthed: field 10 (breaths_per_minute) read 43,

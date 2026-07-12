@@ -26,9 +26,9 @@ setup:
 check:
     venv/bin/ruff check .
     venv/bin/ruff format --check .
-    venv/bin/mypy custom_components/nanit packages/aionanit/aionanit --config-file pyproject.toml
-    {{ python }} -m pytest tests/unit/ -v --cov=custom_components/nanit --cov-fail-under=80
-    {{ python }} -m pytest packages/aionanit/tests/ -v
+    venv/bin/mypy custom_components/nanit --config-file pyproject.toml
+    {{ python }} -m pytest tests/unit/ -v --cov=custom_components/nanit
+    {{ python }} -m pytest tests/lib/ -v --cov=custom_components/nanit --cov-append --cov-fail-under=80
 
 # Auto-fix lint issues and reformat
 fix:
@@ -43,8 +43,8 @@ test target="integration" *args="":
     set -euo pipefail
     case "{{ target }}" in
         integration) {{ python }} -m pytest tests/unit/ -v --cov=custom_components/nanit --cov-report=term-missing {{ args }} ;;
-        lib)         {{ python }} -m pytest packages/aionanit/tests/ -v {{ args }} ;;
-        all)         {{ python }} -m pytest tests/unit/ -v && {{ python }} -m pytest packages/aionanit/tests/ -v ;;
+        lib)         {{ python }} -m pytest tests/lib/ -v {{ args }} ;;
+        all)         {{ python }} -m pytest tests/unit/ -v && {{ python }} -m pytest tests/lib/ -v ;;
         *)           echo "Unknown target '{{ target }}'. Use: integration, lib, all"; exit 1 ;;
     esac
 

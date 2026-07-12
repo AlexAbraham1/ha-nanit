@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from aionanit.exceptions import NanitProtocolError
-from aionanit.proto import (
+from custom_components.nanit.aionanit.exceptions import NanitProtocolError
+from custom_components.nanit.aionanit.proto import (
     GetSensorData,
     GetStatus,
     Message,
@@ -15,7 +15,7 @@ from aionanit.proto import (
     Response,
     Settings,
 )
-from aionanit.ws.protocol import (
+from custom_components.nanit.aionanit.ws.protocol import (
     build_keepalive,
     build_request,
     decode_message,

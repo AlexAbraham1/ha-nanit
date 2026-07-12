@@ -12,7 +12,6 @@ import aiohttp
 
 from ..exceptions import NanitConnectionError, NanitTransportError
 from ..models import ConnectionState, TransportKind
-
 from .protocol import build_keepalive
 
 _LOGGER = logging.getLogger(__name__)

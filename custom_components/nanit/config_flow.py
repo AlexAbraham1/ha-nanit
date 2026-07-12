@@ -17,8 +17,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from aionanit import NanitAuthError, NanitClient, NanitConnectionError, NanitMfaRequiredError
-
+from .aionanit import NanitAuthError, NanitClient, NanitConnectionError, NanitMfaRequiredError
 from .const import (
     CONF_CAMERA_IP,
     CONF_CAMERA_IPS,

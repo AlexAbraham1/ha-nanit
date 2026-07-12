@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
 import pytest
 
-from aionanit.auth import TokenManager
-from aionanit.camera import (
+from custom_components.nanit.aionanit.auth import TokenManager
+from custom_components.nanit.aionanit.camera import (
     NanitCamera,
     _parse_control,
     _parse_control_from_proto,
@@ -20,11 +21,11 @@ from aionanit.camera import (
     _parse_status,
     _parse_status_from_proto,
 )
-from aionanit.exceptions import (
+from custom_components.nanit.aionanit.exceptions import (
     NanitRequestTimeout,
     NanitTransportError,
 )
-from aionanit.models import (
+from custom_components.nanit.aionanit.models import (
     CameraEventKind,
     CameraState,
     ConnectionState,
@@ -35,7 +36,7 @@ from aionanit.models import (
     StatusState,
     TransportKind,
 )
-from aionanit.proto import (
+from custom_components.nanit.aionanit.proto import (
     Control,
     ControlNightLight,
     ControlSensorDataTransfer,
@@ -52,10 +53,10 @@ from aionanit.proto import (
     Status,
     StatusConnectionToServer,
 )
-from aionanit.proto import (
+from custom_components.nanit.aionanit.proto import (
     SensorType as ProtoSensorType,
 )
-from aionanit.rest import NanitRestClient
+from custom_components.nanit.aionanit.rest import NanitRestClient
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -941,7 +942,7 @@ class TestSnapshot:
         assert result is None
 
     async def test_snapshot_returns_none_on_exception(self) -> None:
-        cam, tm, session = _make_camera()
+        cam, tm, _session = _make_camera()
         tm.async_get_access_token = AsyncMock(side_effect=aiohttp.ClientError("network error"))
 
         result = await cam.async_get_snapshot()
@@ -1298,10 +1299,8 @@ class TestSensorPollLifecycle:
 
         # Cleanup
         cam._sensor_poll_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await cam._sensor_poll_task
-        except asyncio.CancelledError:
-            pass
 
     async def test_cancel_sensor_poll_noop_when_none(self) -> None:
         """_cancel_sensor_poll is safe to call when no task exists."""

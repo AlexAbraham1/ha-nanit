@@ -6,9 +6,8 @@ from homeassistant.components.button import ButtonEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from aionanit.camera import NanitCamera
-
 from . import NanitConfigEntry
+from .aionanit.camera import NanitCamera
 from .coordinator import NanitPushCoordinator
 from .entity import NanitEntity
 

@@ -1,7 +1,7 @@
 {
   "domain": "nanit",
   "name": "Nanit",
-  "version": "1.8.7",
+  "version": "1.9.0",
   "homeassistant": "2026.5.0",
   "documentation": "https://github.com/wealthystudent/ha-nanit",
   "issue_tracker": "https://github.com/wealthystudent/ha-nanit/issues",
@@ -17,7 +17,6 @@
   "integration_type": "hub",
   "requirements": [],
   "loggers": [
-    "custom_components.nanit",
-    "aionanit"
+    "custom_components.nanit"
   ]
 }

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from aionanit.exceptions import NanitProtocolError
-from aionanit.proto import (
+from ..exceptions import NanitProtocolError
+from ..proto import (
     Control,
     GetControl,
     GetSensorData,

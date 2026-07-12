@@ -10,8 +10,8 @@ from collections.abc import Awaitable, Callable
 
 import aiohttp
 
-from aionanit.exceptions import NanitConnectionError, NanitTransportError
-from aionanit.models import ConnectionState, TransportKind
+from ..exceptions import NanitConnectionError, NanitTransportError
+from ..models import ConnectionState, TransportKind
 
 from .protocol import build_keepalive
 

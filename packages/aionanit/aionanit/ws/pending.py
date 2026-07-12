@@ -6,7 +6,7 @@ import asyncio
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from aionanit.proto import Response
+    from ..proto import Response
 
 
 class PendingRequests:

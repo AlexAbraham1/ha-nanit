@@ -15,7 +15,6 @@ class NanitMfaRequiredError(NanitAuthError):
     """MFA code required to complete login."""
 
     def __init__(self, mfa_token: str) -> None:
-
         super().__init__("MFA verification required")
         self.mfa_token = mfa_token
 
@@ -32,7 +31,6 @@ class NanitRequestTimeout(NanitError):
     """Protobuf request did not receive a response within the timeout."""
 
     def __init__(self, request_type: str, request_id: int, timeout: float) -> None:
-
         super().__init__(f"Request {request_type} (id={request_id}) timed out after {timeout}s")
         self.request_type = request_type
         self.request_id = request_id
@@ -45,3 +43,11 @@ class NanitProtocolError(NanitError):
 
 class NanitCameraUnavailable(NanitError):
     """Camera is not reachable via any transport."""
+
+
+class BreathingStartError(NanitError):
+    """Failed to start a breathing-monitoring (STING) session.
+
+    Raised when a still frame cannot be captured, the pattern API rejects the
+    request, or the server AI does not detect the Breathing Wear band.
+    """

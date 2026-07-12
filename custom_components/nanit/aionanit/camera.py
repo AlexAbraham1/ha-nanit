@@ -6,6 +6,7 @@ import asyncio
 import dataclasses
 import logging
 import time
+import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any, cast
@@ -14,6 +15,7 @@ import aiohttp
 
 from .auth import TokenManager
 from .exceptions import (
+    BreathingStartError,
     NanitCameraUnavailable,
     NanitConnectionError,
     NanitRequestTimeout,
@@ -50,6 +52,8 @@ from .parsers import (
 from .proto import (
     ControlNightLight,
     ControlSensorDataTransfer,
+    Point,
+    StingStart,
     StreamingStatus,
 )
 from .proto import nanit_pb2 as proto
@@ -83,6 +87,7 @@ _DEFAULT_REQUEST_TIMEOUT: float = 10.0
 _LOCAL_PROBE_INTERVAL: float = 300.0  # 5 minutes
 _MAX_LOCAL_FAILURES_BEFORE_CLOUD: int = 3
 _STALE_CONNECTION_THRESHOLD: float = 300.0  # 5 min — reconnect before send
+_BMM_SESSIONS_URL = "https://api.nanit.com/focus/babies/{baby_uid}/bmm/sessions"
 _HEALTH_CHECK_INTERVAL: float = 270.0  # 4.5 min — periodic session liveness check
 _FRESH_CONNECTION_WINDOW: float = 10.0  # skip reconnect if connected within this
 _DEFAULT_SENSOR_POLL_INTERVAL: float = 120.0  # 2 min — poll sensors camera doesn't push
@@ -467,15 +472,69 @@ class NanitCamera:
     async def async_start_breathing_tracking(self) -> None:
         """Start a Breathing Motion Monitoring ("STING") session.
 
-        Mirrors the Nanit app's "start breathing tracking" action. The camera
-        begins pushing PUT_STING_STATUS frames (bpm/alert) while the Breathing
-        Wear band is detected, and stops on its own when the baby leaves the
-        crib — there is no stop command (matches the app).
+        Mirrors the Nanit app's "start breathing tracking" action: grab a still
+        frame, ask the Nanit pattern API where the Breathing Wear band is, then
+        tell the camera to begin measuring at that location. The camera then
+        pushes PUT_STING_STATUS frames (bpm/alert) while the band is detected
+        and stops on its own when the baby leaves the crib — there is no stop
+        command (matches the app).
 
         Display/convenience only: the Nanit app remains the safety-critical
         breathing-alert path.
+
+        Raises BreathingStartError if a frame cannot be captured or the band is
+        not detected.
         """
-        await self._send_request(RequestType.PUT_STING_START)
+        frame = await self.async_get_snapshot()
+        if frame is None:
+            raise BreathingStartError("could not capture a camera frame")
+        win_location = await self._request_breathing_pattern(frame)
+        sting_start = StingStart(
+            win_location=win_location,
+            session_id=str(uuid.uuid4()),
+            remote_server="",
+            enable_baby_not_in_bed=True,
+        )
+        await self._send_request(RequestType.PUT_STING_START, sting_start=sting_start)
+
+    async def _request_breathing_pattern(self, frame: bytes) -> Point:
+        """POST a still frame to the Nanit pattern API and return the detected
+        breathing-band center as a Point.
+
+        Raises BreathingStartError on HTTP error, no detection, or a malformed
+        response.
+        """
+        camera_status = "ir" if self._state.sensors.night else "rgb"
+        token = await self._token_manager.async_get_access_token()
+        form = aiohttp.FormData()
+        form.add_field("image", frame, content_type="image/jpeg", filename="image")
+        form.add_field("camera_status", camera_status)
+        url = _BMM_SESSIONS_URL.format(baby_uid=self._baby_uid)
+        try:
+            resp = await self._session.post(
+                url,
+                data=form,
+                headers={"Authorization": f"token {token}"},
+                timeout=aiohttp.ClientTimeout(total=15),
+            )
+        except Exception as err:  # network/timeout
+            raise BreathingStartError(f"pattern request failed: {err}") from err
+        if resp.status != 200:
+            raise BreathingStartError(f"pattern request returned HTTP {resp.status}")
+        body = await resp.json()
+        session = body.get("bmm_sessions") or {}
+        if not session.get("detected"):
+            raise BreathingStartError("no breathing band detected in frame")
+        objects = (session.get("data") or {}).get("objects") or []
+        if not objects:
+            raise BreathingStartError("pattern response contained no objects")
+        box = objects[0].get("box") or {}
+        try:
+            x = (int(box["x1"]) + int(box["x2"])) // 2
+            y = (int(box["y1"]) + int(box["y2"])) // 2
+        except (KeyError, ValueError, TypeError) as err:
+            raise BreathingStartError(f"malformed pattern box: {err}") from err
+        return Point(x=x, y=y)
 
     # ------------------------------------------------------------------
     # Streaming

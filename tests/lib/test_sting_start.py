@@ -11,7 +11,10 @@ import pytest
 
 from custom_components.nanit.aionanit.auth import TokenManager
 from custom_components.nanit.aionanit.camera import NanitCamera
-from custom_components.nanit.aionanit.exceptions import BreathingStartError
+from custom_components.nanit.aionanit.exceptions import (
+    BreathingStartError,
+    NanitCameraUnavailable,
+)
 from custom_components.nanit.aionanit.proto import RequestType, Response
 from custom_components.nanit.aionanit.rest import NanitRestClient
 from custom_components.nanit.aionanit.ws.protocol import decode_message
@@ -187,6 +190,29 @@ async def test_raises_on_malformed_box_missing_key() -> None:
 async def test_raises_on_post_network_error() -> None:
     cam = _make_camera()
     cam._session.post = AsyncMock(side_effect=aiohttp.ClientError("boom"))
+
+    with pytest.raises(BreathingStartError):
+        await cam._request_breathing_pattern(b"jpeg")
+
+
+@pytest.mark.asyncio
+async def test_raises_when_camera_send_fails() -> None:
+    cam = _make_camera()
+    cam._session.get = AsyncMock(return_value=_resp(200, read=b"jpeg"))
+    cam._session.post = AsyncMock(return_value=_resp(200, json=_pattern_payload()))
+    cam._send_request = AsyncMock(side_effect=NanitCameraUnavailable("camera offline"))
+
+    with pytest.raises(BreathingStartError):
+        await cam.async_start_breathing_tracking()
+
+
+@pytest.mark.asyncio
+async def test_raises_on_non_json_response() -> None:
+    resp = MagicMock()
+    resp.status = 200
+    resp.json = AsyncMock(side_effect=ValueError("not json"))
+    cam = _make_camera()
+    cam._session.post = AsyncMock(return_value=resp)
 
     with pytest.raises(BreathingStartError):
         await cam._request_breathing_pattern(b"jpeg")

@@ -482,8 +482,8 @@ class NanitCamera:
         Display/convenience only: the Nanit app remains the safety-critical
         breathing-alert path.
 
-        Raises BreathingStartError if a frame cannot be captured or the band is
-        not detected.
+        Raises BreathingStartError if a frame cannot be captured, the band is
+        not detected, or the camera is unreachable.
         """
         frame = await self.async_get_snapshot()
         if frame is None:
@@ -495,7 +495,12 @@ class NanitCamera:
             remote_server="",
             enable_baby_not_in_bed=True,
         )
-        await self._send_request(RequestType.PUT_STING_START, sting_start=sting_start)
+        try:
+            await self._send_request(RequestType.PUT_STING_START, sting_start=sting_start)
+        except (NanitRequestTimeout, NanitTransportError, NanitCameraUnavailable) as err:
+            raise BreathingStartError(
+                f"could not send the start command to the camera: {err}"
+            ) from err
 
     async def _request_breathing_pattern(self, frame: bytes) -> Point:
         """POST a still frame to the Nanit pattern API and return the detected
@@ -521,7 +526,10 @@ class NanitCamera:
             raise BreathingStartError(f"pattern request failed: {err}") from err
         if resp.status != 200:
             raise BreathingStartError(f"pattern request returned HTTP {resp.status}")
-        body = await resp.json()
+        try:
+            body = await resp.json(content_type=None)
+        except Exception as err:
+            raise BreathingStartError(f"malformed pattern response: {err}") from err
         session = body.get("bmm_sessions") or {}
         if not session.get("detected"):
             raise BreathingStartError("no breathing band detected in frame")

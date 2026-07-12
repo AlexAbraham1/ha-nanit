@@ -25,9 +25,12 @@ from pathlib import Path
 from typing import Any
 
 import aiohttp
-from aionanit import NanitClient
-from aionanit.exceptions import NanitError
-from aionanit.proto import (
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from custom_components.nanit.aionanit import NanitClient
+from custom_components.nanit.aionanit.exceptions import NanitError
+from custom_components.nanit.aionanit.proto import (
     Control,
     ControlNightLight,
     GetControl,
@@ -35,7 +38,7 @@ from aionanit.proto import (
     Request,
     RequestType,
 )
-from aionanit.ws.protocol import decode_message
+from custom_components.nanit.aionanit.ws.protocol import decode_message
 
 SESSION_FILE = Path(__file__).resolve().parents[1] / ".nanit-session"
 
@@ -328,7 +331,7 @@ class ProbeSession:
 
         def _capture(msg_data: bytes) -> None:
             msg = decode_message(msg_data)
-            from aionanit.ws.protocol import extract_response
+            from custom_components.nanit.aionanit.ws.protocol import extract_response
 
             resp = extract_response(msg)
             if resp is not None and not future.done():
@@ -797,7 +800,7 @@ async def cmd_dump_state(session: ProbeSession) -> None:
 
     print("\n  Requesting GET_SENSOR_DATA (all=True) ...")
     try:
-        from aionanit.proto import GetSensorData
+        from custom_components.nanit.aionanit.proto import GetSensorData
 
         resp = await cam._send_request(
             RequestType.GET_SENSOR_DATA,
@@ -893,7 +896,7 @@ async def async_main() -> int:
 
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
-        logging.getLogger("aionanit").setLevel(logging.DEBUG)
+        logging.getLogger("custom_components.nanit.aionanit").setLevel(logging.DEBUG)
 
     if args.list:
         print("Available commands:")

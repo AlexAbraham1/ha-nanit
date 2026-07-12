@@ -16,4 +16,4 @@ repos:
           - homeassistant-stubs
         args: [--config-file, pyproject.toml]
         pass_filenames: false
-        entry: mypy custom_components/nanit packages/aionanit/aionanit
+        entry: mypy custom_components/nanit

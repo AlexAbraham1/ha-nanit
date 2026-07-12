@@ -31,9 +31,12 @@ from pathlib import Path
 from typing import Any
 
 import aiohttp
-from aionanit import NanitClient
-from aionanit.exceptions import NanitError
-from aionanit.proto import (
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from custom_components.nanit.aionanit import NanitClient
+from custom_components.nanit.aionanit.exceptions import NanitError
+from custom_components.nanit.aionanit.proto import (
     GetStatus,
     Message,
     MessageType,
@@ -43,7 +46,7 @@ from aionanit.proto import (
     RequestType,
     Settings,
 )
-from aionanit.ws.protocol import decode_message, encode_message
+from custom_components.nanit.aionanit.ws.protocol import decode_message, encode_message
 
 SESSION_FILE = Path(__file__).resolve().parents[1] / ".nanit-session"
 
@@ -300,7 +303,7 @@ class SoundSession:
 
         def _capture(msg_data: bytes) -> None:
             msg = decode_message(msg_data)
-            from aionanit.ws.protocol import extract_response
+            from custom_components.nanit.aionanit.ws.protocol import extract_response
 
             resp = extract_response(msg)
             if resp is not None and not future.done():
@@ -958,7 +961,7 @@ async def async_main() -> int:
 
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
-        logging.getLogger("aionanit").setLevel(logging.DEBUG)
+        logging.getLogger("custom_components.nanit.aionanit").setLevel(logging.DEBUG)
 
     if args.list:
         print("Available commands:")

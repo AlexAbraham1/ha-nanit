@@ -14,7 +14,15 @@ from getpass import getpass
 from pathlib import Path
 
 import aiohttp
-from aionanit import NanitAuthError, NanitClient, NanitConnectionError, NanitMfaRequiredError
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from custom_components.nanit.aionanit import (
+    NanitAuthError,
+    NanitClient,
+    NanitConnectionError,
+    NanitMfaRequiredError,
+)
 
 SESSION_FILE = Path(__file__).resolve().parents[1] / ".nanit-session"
 

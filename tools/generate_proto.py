@@ -5,8 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-PROTO_DIR = Path(__file__).parent.parent / "proto"
-OUT_DIR = Path(__file__).parent.parent / "aionanit" / "proto"
+PROTO_DIR = Path(__file__).parent / "proto"
+OUT_DIR = Path(__file__).parent.parent / "custom_components" / "nanit" / "aionanit" / "proto"
 
 
 def main() -> None:

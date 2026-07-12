@@ -20,6 +20,6 @@ An `asyncio.Event` tracks the connection state. When a command (`_send_request`)
 
 ## Related files
 
-- `packages/aionanit/aionanit/camera.py` — `_token_refresh_loop`, `_connected_event`, `_send_request`
-- `packages/aionanit/aionanit/ws/transport.py` — `WsTransport` reconnect loop
+- `custom_components/nanit/aionanit/camera.py` — `_token_refresh_loop`, `_connected_event`, `_send_request`
+- `custom_components/nanit/aionanit/ws/transport.py` — `WsTransport` reconnect loop
 - `custom_components/nanit/coordinator.py` — `NanitPushCoordinator` availability grace period

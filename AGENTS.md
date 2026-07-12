@@ -10,7 +10,7 @@
 |--------------------------------------|----------------------------------------------------|
 | Any code change                      | [Code Standards](#code-standards), [Git Workflow](#git-workflow), [Guardrails](#guardrails) |
 | Integration code (`custom_components/`) | Above + [Architecture](#architecture), [HA Integration Patterns](#ha-integration-patterns) |
-| Client library (`packages/aionanit/`)  | Above + [Architecture](#architecture), [aionanit Patterns](#aionanit-patterns) |
+| Client library (`custom_components/nanit/aionanit/`)  | Above + [Architecture](#architecture), [aionanit Patterns](#aionanit-patterns) |
 | Connection/WebSocket work            | Above + [docs/CONNECTION_RELIABILITY.md](docs/CONNECTION_RELIABILITY.md) |
 | Security review                      | [Security](#security), [docs/SECURITY_AUDIT_CHECKLIST.md](docs/SECURITY_AUDIT_CHECKLIST.md) |
 | PR review                            | [Git Workflow](#git-workflow), [Security](#security), [Guardrails](#guardrails) |
@@ -20,16 +20,16 @@
 
 ## Architecture
 
-Monorepo with two packages for Nanit baby camera Home Assistant integration:
+Self-contained integration for Nanit baby camera Home Assistant support:
 
 ```
-custom_components/nanit/   ← HA integration (Python, async)
-packages/aionanit/         ← Nanit API client library (published to PyPI)
-frontend/                  ← Lovelace card source (TypeScript, Rollup → nanit-card.js)
-tests/unit/                ← Integration tests (80% coverage threshold)
-dev/                       ← Docker-based dev HA instance
-tools/                     ← CLI utilities (login, events, probe)
-docs/                      ← Security checklist, connection reliability, testing
+custom_components/nanit/           ← HA integration (Python, async)
+custom_components/nanit/aionanit/  ← Vendored Nanit API client library (in-tree, not on PyPI)
+frontend/                          ← Lovelace card source (TypeScript, Rollup → nanit-card.js)
+tests/unit/                        ← Integration tests (80% coverage threshold)
+dev/                               ← Docker-based dev HA instance
+tools/                             ← CLI utilities (login, events, probe)
+docs/                              ← Security checklist, connection reliability, testing
 ```
 
 **Data flow:**
@@ -67,7 +67,7 @@ docs/                      ← Security checklist, connection reliability, testi
 - **Type checking**: mypy strict mode. All functions must have type hints.
 - **Formatting**: Ruff formatter (enforced via pre-commit).
 - **Strings**: User-facing text in `strings.json` / `translations/en.json` — no hardcoded English.
-- **Imports**: isort via Ruff. Known first-party: `aionanit`, `custom_components.nanit`.
+- **Imports**: isort via Ruff. Known first-party: `custom_components.nanit` (covers the vendored `custom_components.nanit.aionanit`).
 - **Naming**: Follow existing patterns. Never change entity unique IDs or class names without a migration plan.
 - **Tests**: New features must include tests. Coverage threshold: 80% (enforced in CI).
 
@@ -172,7 +172,7 @@ just release
   p)  Create PR        push & open PR with release label
   t)  Tag PR           add release label to current PR
   m)  Merge PR         squash-merge → triggers auto-beta
-  b)  Release beta     publish pre-release → PyPI beta
+  b)  Release beta     tag a pre-release, attach nanit.zip
   s)  Release stable   ship to production
   v)  View releases    release history & status
   r)  Retry pipeline   re-trigger failed release workflow
@@ -194,20 +194,18 @@ Path B (skip beta):
 
 **Multiple concurrent betas** are supported. Different features can have independent beta tracks (e.g., `v1.4.0-beta.2` and `v1.5.0-beta.1` can coexist).
 
-**Version lives in two files** (kept in sync by release workflow and version-bump PRs):
-- `custom_components/nanit/manifest.json` → `"version"` (semver) + `"requirements"` (PEP 440)
-- `packages/aionanit/pyproject.toml` → `version` (PEP 440)
+**Version lives in one file**: `custom_components/nanit/manifest.json` → `"version"` (semver). `"requirements"` always stays `[]` — `aionanit` is vendored in-tree at `custom_components/nanit/aionanit/`, not installed from PyPI.
 
-Version files on `main` contain the **last stable release version** (not the current beta). The actual release version is always derived from the **git tag name** and injected at build time by the release workflow. After a stable release, the workflow opens a PR to bump version files on `main`.
+`manifest.json` on `main` contains the **last stable release version** (not the current beta). The actual release version is always derived from the **git tag name** and injected into the release artifact's manifest at build time by the release workflow. After a stable release, the workflow opens a PR to bump `manifest.json` on `main`.
 
-| Version mapping | manifest.json `version` | pyproject.toml `version` | manifest.json `requirements` |
-|-----------------|------------------------|--------------------------|------------------------------|
-| Beta            | `1.4.0-beta.1`        | `1.4.0b1`               | `["aionanit>=1.4.0b1"]`     |
-| Stable          | `1.4.0`               | `1.4.0`                  | `["aionanit>=1.4.0"]`       |
+| Version mapping | manifest.json `version` | manifest.json `requirements` |
+|-----------------|--------------------------|------------------------------|
+| Beta            | `1.4.0-beta.1`            | `[]`                         |
+| Stable          | `1.4.0`                   | `[]`                         |
 
 **Rollback strategy**: Forward-fix via new PR. Merge the fix → auto-beta tags a new beta → `just release` → test → release stable.
 
-**Pipeline fix**: If the release workflow fails (e.g. action version issues, PyPI errors), fix the pipeline code, push to `main`, then use the "Retry pipeline" option in `just release`. This re-triggers the workflow using the updated YAML from `main` while building from the original tag. PyPI publish is idempotent (skips already-uploaded versions).
+**Pipeline fix**: If the release workflow fails (e.g. action version issues), fix the pipeline code, push to `main`, then use the "Retry pipeline" option in `just release`. This re-triggers the workflow using the updated YAML from `main` while building from the original tag.
 
 **Branch protection compatibility**: The auto-beta workflow tags the merge commit directly (no version-injection commit) and pushes only the tag — no push to `main`. The release workflow opens a version-bump PR after stable releases instead of pushing directly to `main`. This ensures all commits on `main` go through the normal PR + signed-commit flow.
 
@@ -215,17 +213,16 @@ Version files on `main` contain the **last stable release version** (not the cur
 
 All dev and test dependency versions are pinned to minor-version ranges to prevent supply-chain attacks while allowing patch updates:
 
-- `dev/requirements.txt` — integration dev/test/CI tooling (`>=x.y,<x.(y+1)` ranges)
-- `packages/aionanit/pyproject.toml` `[project.optional-dependencies] dev` — library test deps (`>=x.y,<x.(y+1)` ranges)
+- `dev/requirements.txt` — integration dev/test/CI tooling, including `aionanit`'s test deps now that it's vendored (`>=x.y,<x.(y+1)` ranges)
 
 **CI Python version**: CI runs Python 3.13. `homeassistant` must stay below `2026.3` (HA 2026.3.0+ requires Python 3.14.2+). The `aiohttp` dev pin must stay below `3.14` (aioresponses 0.7.x incompatible with aiohttp 3.14+).
 
-**Runtime dependencies** (`aiohttp`, `protobuf` in `[project] dependencies`) use broader range constraints (e.g., `>=3.9.0,<4`) since exact pins would conflict with Home Assistant's own dependency resolution.
+**Runtime dependencies**: `aiohttp` and `protobuf` are Home Assistant core dependencies already, so the vendored `aionanit` has no `requirements` entry of its own in `manifest.json` (stays `[]`) and relies on HA's own dependency resolution for them.
 
 **Before every release**, review and update pinned versions:
 1. Run `pip install --upgrade` for each pinned package (or recreate venv with `just setup`).
 2. Run `just check` to verify compatibility.
-3. Update the pinned versions in both `dev/requirements.txt` and `packages/aionanit/pyproject.toml` to match.
+3. Update the pinned versions in `dev/requirements.txt` to match.
 4. Commit version bumps as a separate `chore: update pinned dev dependencies` commit.
 
 ---
@@ -292,7 +289,7 @@ Follow [Home Assistant developer docs](https://developers.home-assistant.io/) (l
 ## aionanit Patterns
 
 - All I/O: async (`aiohttp`, `asyncio`). Use the shared `aiohttp.ClientSession` — do not create your own.
-- Protobuf: generated from `proto/nanit.proto` via `scripts/generate_proto.py`.
+- Protobuf: generated from `tools/proto/nanit.proto` via `tools/generate_proto.py`.
 - WebSocket keepalive: ping every 25s, read deadline 60s.
 - Token lifetime: 3600s. Pre-emptive refresh at ~3300s (5 min before expiry).
 - Local connections: self-signed TLS (`ssl.CERT_NONE`). Max 1 WebSocket per camera.
@@ -304,8 +301,8 @@ Follow [Home Assistant developer docs](https://developers.home-assistant.io/) (l
 ## CI
 
 - **Lint + typecheck + tests**: `.github/workflows/ci.yaml` (runs on every push/PR to `main`).
-- **Auto beta**: `.github/workflows/auto-beta.yaml` (triggers on PR merge to `main` with a `release:*` label; bumps version in manifest + pyproject, commits to `main`, tags, and pushes both).
-- **Release**: `.github/workflows/release.yaml` (triggers on release published or manual dispatch; publishes aionanit to PyPI, attaches nanit.zip. For stable releases: also commits the clean version to `main`).
+- **Auto beta**: `.github/workflows/auto-beta.yaml` (triggers on PR merge to `main` with a `release:*` label; computes the next beta version and pushes a tag — version injection happens at build time in the release workflow).
+- **Release**: `.github/workflows/release.yaml` (triggers on release published or manual dispatch; runs the CI gate for stable releases, attaches `nanit.zip` with the version-stamped manifest to the GitHub release. No PyPI publish — `aionanit` is vendored, and `requirements` stays `[]` in every artifact. For stable releases: also opens a PR to bump `custom_components/nanit/manifest.json` version on `main`).
 
 ### Changelog
 

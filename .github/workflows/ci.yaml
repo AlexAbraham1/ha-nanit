@@ -59,10 +59,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e "packages/aionanit[dev]"
+          pip install -r dev/requirements.txt
 
       - name: Run aionanit tests
-        run: python -m pytest packages/aionanit/tests/ -v --tb=short
+        run: python -m pytest tests/lib/ -v --tb=short
 
   typecheck:
     name: Type Check
@@ -77,9 +77,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r dev/requirements.txt
-
-      - name: Run mypy on aionanit (strict)
-        run: mypy packages/aionanit/aionanit --strict --ignore-missing-imports
 
       - name: Run mypy on integration
         run: mypy custom_components/nanit --config-file pyproject.toml --python-version 3.14

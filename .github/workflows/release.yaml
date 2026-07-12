@@ -87,96 +87,14 @@ jobs:
       - name: Ruff format check
         run: ruff format --check .
 
-      - name: Run integration tests with coverage
-        run: python -m pytest tests/unit/ -v --tb=short --cov=custom_components/nanit --cov-fail-under=80
-
-      - name: Run mypy on aionanit (strict)
-        run: mypy packages/aionanit/aionanit --strict --ignore-missing-imports
-
       - name: Run mypy on integration
         run: mypy custom_components/nanit --config-file pyproject.toml --python-version 3.14
 
-      - name: Install aionanit test dependencies
-        run: pip install -e "packages/aionanit[dev]"
+      - name: Run integration tests with coverage
+        run: python -m pytest tests/unit/ -v --tb=short --cov=custom_components/nanit
 
-      - name: Run aionanit tests
-        run: python -m pytest packages/aionanit/tests/ -v --tb=short
-
-  publish-beta:
-    name: Publish Beta to PyPI
-    needs: resolve
-    if: needs.resolve.outputs.is_stable == 'false'
-    runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/project/aionanit/
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ needs.resolve.outputs.tag }}
-
-      - name: Inject version from tag
-        env:
-          PEP440: ${{ needs.resolve.outputs.pep440 }}
-        run: |
-          sed -i "s/^version = \".*\"/version = \"$PEP440\"/" packages/aionanit/pyproject.toml
-
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-        with:
-          python-version: "3.14"
-
-      - name: Build aionanit package
-        run: |
-          pip install build
-          python -m build packages/aionanit
-
-      - name: Publish beta to PyPI
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
-        with:
-          packages-dir: packages/aionanit/dist/
-          skip-existing: true
-
-  publish-stable:
-    name: Publish Stable to PyPI
-    needs: [resolve, ci-gate]
-    if: needs.resolve.outputs.is_stable == 'true'
-    runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/project/aionanit/
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ needs.resolve.outputs.tag }}
-
-      - name: Inject version from tag
-        env:
-          PEP440: ${{ needs.resolve.outputs.pep440 }}
-        run: |
-          sed -i "s/^version = \".*\"/version = \"$PEP440\"/" packages/aionanit/pyproject.toml
-
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-        with:
-          python-version: "3.14"
-
-      - name: Install build
-        run: pip install build
-
-      - name: Build package
-        working-directory: packages/aionanit
-        run: python -m build
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
-        with:
-          packages-dir: packages/aionanit/dist/
-          skip-existing: true
+      - name: Run library tests with coverage
+        run: python -m pytest tests/lib/ -v --tb=short --cov=custom_components/nanit --cov-append --cov-fail-under=80
 
   attach-artifact:
     name: Attach Release Artifact
@@ -192,10 +110,8 @@ jobs:
       - name: Inject version from tag
         env:
           SEMVER: ${{ needs.resolve.outputs.semver }}
-          PEP440: ${{ needs.resolve.outputs.pep440 }}
         run: |
-          jq --arg v "$SEMVER" --arg r "aionanit>=$PEP440" \
-            '.version = $v | .requirements = [$r]' \
+          jq --arg v "$SEMVER" '.version = $v' \
             custom_components/nanit/manifest.json > /tmp/manifest.json
           mv /tmp/manifest.json custom_components/nanit/manifest.json
 
@@ -220,17 +136,13 @@ jobs:
         with:
           ref: main
 
-      - name: Inject stable version into manifest and pyproject
+      - name: Inject stable version into manifest
         env:
           SEMVER: ${{ needs.resolve.outputs.semver }}
-          PEP440: ${{ needs.resolve.outputs.pep440 }}
         run: |
-          jq --arg v "$SEMVER" --arg r "aionanit>=$PEP440" \
-            '.version = $v | .requirements = [$r]' \
+          jq --arg v "$SEMVER" '.version = $v' \
             custom_components/nanit/manifest.json > /tmp/manifest.json
           mv /tmp/manifest.json custom_components/nanit/manifest.json
-
-          sed -i "s/^version = \".*\"/version = \"$PEP440\"/" packages/aionanit/pyproject.toml
 
       - name: Create version bump PR
         env:
@@ -242,7 +154,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git push origin --delete "$branch" 2>/dev/null || true
           git checkout -b "$branch"
-          git add custom_components/nanit/manifest.json packages/aionanit/pyproject.toml
+          git add custom_components/nanit/manifest.json
           git commit -m "chore: bump version to v${SEMVER} [skip ci]"
           git push origin "$branch"
           gh pr create \

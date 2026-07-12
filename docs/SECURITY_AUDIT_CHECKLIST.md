@@ -5,7 +5,7 @@ Every PR, issue fix, and release must be evaluated against these vulnerability c
 
 Use this as a checklist: for each category, verify the change does not introduce or worsen the described vulnerability pattern.
 
-> **Scope**: This covers both the HA integration (`custom_components/nanit/`) and the client library (`packages/aionanit/`).
+> **Scope**: This covers the HA integration (`custom_components/nanit/`), including the vendored client library (`custom_components/nanit/aionanit/`).
 
 ---
 
@@ -293,7 +293,7 @@ Run through the full checklist against all changes since the last release tag.
 - [ ] Dependency version bumps treated as security-relevant changes (diff the upstream changelog)
 - [ ] Major version bumps require full dependency audit
 
-**ha-nanit specific**: `manifest.json` currently uses `"aionanit>=1.0.13"` — this is a range specifier. For maximum supply chain security, consider exact pinning (`==`). Since `aionanit` is maintained in-repo (`packages/aionanit/`), the risk is lower but still present for PyPI-published versions.
+**ha-nanit specific**: `manifest.json` has `"requirements": []` — `aionanit` is vendored in-tree at `custom_components/nanit/aionanit/` and is not installed from PyPI, so there is no version specifier to pin and no PyPI supply-chain exposure for it. Changes to the vendored library go through the normal PR review process like any other in-repo code.
 
 ---
 
@@ -565,7 +565,7 @@ Document any intentional security tradeoffs here with justification:
 | Risk | Justification | Mitigation |
 |---|---|---|
 | `ssl.CERT_NONE` for local camera connections (port 442) | Nanit cameras use self-signed TLS certificates. No CA-signed option available. | Connection is LAN-only. IP must be explicitly configured by user in options flow. |
-| `aionanit>=1.0.13` range pinning in manifest.json | Library is maintained in-repo and published to PyPI by the same maintainers. | Consider switching to exact pinning for releases. Monitor PyPI for unauthorized publishes. |
+| `aionanit` has no manifest.json requirement to pin | Library is vendored in-tree at `custom_components/nanit/aionanit/` (not installed from PyPI); `manifest.json` `requirements` stays `[]`. | Changes to the vendored library are reviewed like any other in-repo code change. |
 
 ---
 

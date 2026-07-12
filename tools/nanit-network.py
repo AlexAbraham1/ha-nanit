@@ -19,7 +19,10 @@ from datetime import datetime
 from pathlib import Path
 
 import aiohttp
-from aionanit.rest import NANIT_API_HEADERS
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from custom_components.nanit.aionanit.rest import NANIT_API_HEADERS
 
 SESSION_FILE = Path(__file__).resolve().parents[1] / ".nanit-session"
 

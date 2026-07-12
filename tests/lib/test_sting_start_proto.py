@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from custom_components.nanit.aionanit.proto import (
     Area,
     Point,
     Request,
     RequestType,
     StingStart,
+    nanit_pb2,
 )
 
 
@@ -45,3 +48,22 @@ def test_sting_start_is_wire_field_22() -> None:
 def test_area_message_importable() -> None:
     a = Area(width=12, height=34)
     assert (a.width, a.height) == (12, 34)
+
+
+def test_gencode_pinned_to_6_30_0_for_ha_runtime() -> None:
+    """Guard the SHIPPED nanit_pb2.py against an unpinned regen.
+
+    The HA box's protobuf runtime is 6.32.0. protoc stamps generated files with
+    whatever protobuf version is installed on the dev machine, and a file stamped
+    7.x+ raises at import time via ValidateProtobufRuntimeVersion() on that older
+    runtime. tools/generate_proto.py patches the generated file down to a pinned
+    floor (6, 30, 0) that HA's runtime satisfies. This test reads the *committed*
+    artifact directly (not the patching logic) so a future regen that ships an
+    unpinned file fails CI immediately instead of breaking the box at import time.
+    """
+    source = Path(nanit_pb2.__file__).read_text()
+
+    assert "_runtime_version.Domain.PUBLIC, 6, 30, 0," in source
+    assert "Domain.PUBLIC, 7," not in source
+    assert "Domain.PUBLIC, 8," not in source
+    assert "# Protobuf Python Version: 6.30.0" in source

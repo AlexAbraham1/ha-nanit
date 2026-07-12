@@ -43,12 +43,23 @@ def _pin_gencode_version(text: str) -> str:
     """
     major, minor, patch = PINNED_GENCODE_VERSION
 
-    text = _VERSION_COMMENT_RE.sub(
+    text, version_comment_count = _VERSION_COMMENT_RE.subn(
         f"# Protobuf Python Version: {major}.{minor}.{patch}", text, count=1
     )
-    text = _VALIDATE_CALL_RE.sub(
+    if version_comment_count == 0:
+        raise RuntimeError(
+            "generate_proto: could not pin gencode version — version comment regex "
+            "did not match; protoc output format may have changed"
+        )
+
+    text, validate_call_count = _VALIDATE_CALL_RE.subn(
         f"_runtime_version.Domain.PUBLIC, {major}, {minor}, {patch},", text, count=1
     )
+    if validate_call_count == 0:
+        raise RuntimeError(
+            "generate_proto: could not pin gencode version — validate call regex "
+            "did not match; protoc output format may have changed"
+        )
 
     if _EXPLANATION_COMMENT not in text:
         text = _VALIDATE_LINE_RE.sub(

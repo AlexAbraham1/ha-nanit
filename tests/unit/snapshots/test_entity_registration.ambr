@@ -312,6 +312,19 @@
 # ---
 # name: TestEntityRegistration.test_select[baseline]
   list([
+    dict({
+      'class': 'NanitSoundTimerSelect',
+      'device_class': None,
+      'device_identifiers': list([
+        tuple(
+          'nanit',
+          'cam_1',
+        ),
+      ]),
+      'entity_category': <EntityCategory.CONFIG: 'config'>,
+      'translation_key': 'sound_machine_timer',
+      'unique_id': 'cam_1_sound_machine_timer',
+    }),
   ])
 # ---
 # name: TestEntityRegistration.test_select[full]
@@ -328,6 +341,19 @@
       'entity_category': None,
       'translation_key': 'sound_machine_sound',
       'unique_id': 'cam_1_sound_machine_sound',
+    }),
+    dict({
+      'class': 'NanitSoundTimerSelect',
+      'device_class': None,
+      'device_identifiers': list([
+        tuple(
+          'nanit',
+          'cam_1',
+        ),
+      ]),
+      'entity_category': <EntityCategory.CONFIG: 'config'>,
+      'translation_key': 'sound_machine_timer',
+      'unique_id': 'cam_1_sound_machine_timer',
     }),
   ])
 # ---

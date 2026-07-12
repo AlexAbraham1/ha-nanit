@@ -26,7 +26,7 @@ from custom_components.nanit.light import (
 from custom_components.nanit.light import (
     _COMMAND_GRACE_PERIOD as _NL_GRACE,
 )
-from custom_components.nanit.select import NanitSoundSelect
+from custom_components.nanit.select import NanitSoundSelect, NanitSoundTimerSelect
 from custom_components.nanit.switch import NanitSLPowerSwitch, NanitSLSoundSwitch
 
 _MODELS = importlib.import_module("aionanit.models")
@@ -411,7 +411,9 @@ async def test_select_async_setup_entry_adds_entities_for_sound_light_coordinato
     await select_platform.async_setup_entry(MagicMock(), entry, async_add_entities)
 
     entities = async_add_entities.call_args.args[0]
-    assert len(entities) == 1
+    # 2 camera sound-machine timers + 1 S&L sound-track select = 3
+    assert len(entities) == 3
+    assert sum(isinstance(e, NanitSoundTimerSelect) for e in entities) == 2
     assert sum(isinstance(e, NanitSoundSelect) for e in entities) == 1
 
 

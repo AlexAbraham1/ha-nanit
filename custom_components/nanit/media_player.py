@@ -16,11 +16,9 @@ from homeassistant.components.media_player.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from aionanit import NanitCamera
-
 from . import NanitConfigEntry
-from .coordinator import NanitPushCoordinator
 from .entity import NanitEntity
+from .hub import CameraData
 
 PARALLEL_UPDATES = 0
 
@@ -38,7 +36,7 @@ async def async_setup_entry(
     """Set up Nanit media player entities for all cameras on the account."""
     entities: list[MediaPlayerEntity] = []
     for cam_data in entry.runtime_data.cameras.values():
-        entities.append(NanitMediaPlayer(cam_data.push_coordinator, cam_data.camera))
+        entities.append(NanitMediaPlayer(cam_data))
     async_add_entities(entities)
 
 
@@ -58,15 +56,12 @@ class NanitMediaPlayer(NanitEntity, MediaPlayerEntity):
         | MediaPlayerEntityFeature.VOLUME_SET
     )
 
-    def __init__(
-        self,
-        coordinator: NanitPushCoordinator,
-        camera: NanitCamera,
-    ) -> None:
+    def __init__(self, cam_data: CameraData) -> None:
         """Initialize."""
-        super().__init__(coordinator)
-        self._camera = camera
-        self._attr_unique_id = f"{camera.uid}_sound_machine"
+        super().__init__(cam_data.push_coordinator)
+        self._camera = cam_data.camera
+        self._cam_data = cam_data
+        self._attr_unique_id = f"{cam_data.camera.uid}_sound_machine"
         # Optimistic command tracking to suppress stale push echoes.
         self._command_playing: bool | None = None
         self._command_track: str | None = None
@@ -131,7 +126,7 @@ class NanitMediaPlayer(NanitEntity, MediaPlayerEntity):
         self._command_ts = time.monotonic()
         self.async_write_ha_state()
         try:
-            await self._camera.async_start_playback()
+            await self._camera.async_start_playback(duration=self._cam_data.sound_timer_seconds)
         except Exception:
             self._command_playing = None
             self.async_write_ha_state()
@@ -156,7 +151,9 @@ class NanitMediaPlayer(NanitEntity, MediaPlayerEntity):
         self._command_ts = time.monotonic()
         self.async_write_ha_state()
         try:
-            await self._camera.async_start_playback(track=source)
+            await self._camera.async_start_playback(
+                track=source, duration=self._cam_data.sound_timer_seconds
+            )
         except Exception:
             self._command_playing = None
             self._command_track = None

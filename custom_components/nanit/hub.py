@@ -57,6 +57,10 @@ class CameraData:
     cloud_coordinator: NanitCloudCoordinator | None
     sound_light_coordinator: NanitSoundLightCoordinator | None = None
     network_coordinator: NanitNetworkCoordinator | None = None
+    # User-selected sound-machine playback timer, in seconds; None = continuous
+    # (the aionanit 24h default). Set by the sound-machine timer select entity
+    # and read by the media_player when it starts playback.
+    sound_timer_seconds: int | None = None
 
 
 class NanitHub:

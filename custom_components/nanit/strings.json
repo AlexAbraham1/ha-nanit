@@ -124,7 +124,8 @@
       "sound_light_light": { "name": "Light" }
     },
     "select": {
-      "sound_machine_sound": { "name": "Sound Track" }
+      "sound_machine_sound": { "name": "Sound Track" },
+      "sound_machine_timer": { "name": "Sound Machine Timer" }
     },
     "media_player": {
       "sound_machine": { "name": "Sound Machine" }

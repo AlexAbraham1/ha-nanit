@@ -7,6 +7,7 @@ the codebase so consumers don't need to know the nesting.
 """
 
 from .nanit_pb2 import (
+    Area,
     Control,
     GetControl,
     GetLogs,
@@ -16,6 +17,7 @@ from .nanit_pb2 import (
     Message,
     MountingMode,
     Playback,
+    Point,
     Request,
     RequestType,
     Response,
@@ -24,6 +26,7 @@ from .nanit_pb2 import (
     Settings,
     Soundtrack,
     Status,
+    StingStart,
     StingStatus,
     Stream,
     StreamIdentifier,
@@ -115,6 +118,7 @@ SettingsStreamSettings = Settings.StreamSettings
 
 
 __all__ = [
+    "Area",
     "Control",
     "ControlNightLight",
     "ControlSensorDataTransfer",
@@ -128,6 +132,7 @@ __all__ = [
     "MountingMode",
     "Playback",
     "PlaybackStatus",
+    "Point",
     "Request",
     "RequestType",
     "Response",
@@ -142,6 +147,7 @@ __all__ = [
     "SoundtrackType",
     "Status",
     "StatusConnectionToServer",
+    "StingStart",
     "StingStatus",
     "Stream",
     "StreamIdentifier",

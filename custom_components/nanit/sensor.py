@@ -222,7 +222,8 @@ class NanitBreathingRateSensor(NanitEntity, SensorEntity):
         """Return the current breaths per minute."""
         if self.coordinator.data is None:
             return None
-        return self.coordinator.data.breathing.breaths_per_minute
+        bpm: int | None = self.coordinator.data.breathing.breaths_per_minute
+        return bpm
 
 
 class NanitSLSensor(NanitSoundLightEntity, SensorEntity):

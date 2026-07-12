@@ -177,7 +177,8 @@ class NanitBreathingAlertBinarySensor(NanitEntity, BinarySensorEntity):
         """Return True when a breathing-motion alert is active."""
         if self.coordinator.data is None:
             return None
-        return self.coordinator.data.breathing.is_alert
+        alert: bool | None = self.coordinator.data.breathing.is_alert
+        return alert
 
 
 class NanitBreathingTrackingBinarySensor(NanitEntity, BinarySensorEntity):

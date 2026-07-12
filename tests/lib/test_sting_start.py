@@ -164,6 +164,35 @@ async def test_midpoint_math(box: dict[str, str], expected: tuple[int, int]) -> 
 
 
 @pytest.mark.asyncio
+async def test_raises_on_malformed_box_bad_value() -> None:
+    cam = _make_camera()
+    box = {"x1": "bad", "x2": "200", "y1": "40", "y2": "80"}
+    cam._session.post = AsyncMock(return_value=_resp(200, json=_pattern_payload(box)))
+
+    with pytest.raises(BreathingStartError):
+        await cam._request_breathing_pattern(b"jpeg")
+
+
+@pytest.mark.asyncio
+async def test_raises_on_malformed_box_missing_key() -> None:
+    cam = _make_camera()
+    box = {"x1": "100", "x2": "200"}  # missing y1/y2
+    cam._session.post = AsyncMock(return_value=_resp(200, json=_pattern_payload(box)))
+
+    with pytest.raises(BreathingStartError):
+        await cam._request_breathing_pattern(b"jpeg")
+
+
+@pytest.mark.asyncio
+async def test_raises_on_post_network_error() -> None:
+    cam = _make_camera()
+    cam._session.post = AsyncMock(side_effect=aiohttp.ClientError("boom"))
+
+    with pytest.raises(BreathingStartError):
+        await cam._request_breathing_pattern(b"jpeg")
+
+
+@pytest.mark.asyncio
 async def test_camera_status_ir_when_night() -> None:
     cam = _make_camera()
     # NOTE: night mode lives on CameraState.sensors.night, not a top-level

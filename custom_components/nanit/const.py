@@ -61,3 +61,10 @@ DEFAULT_SOUND_MACHINE_SOUNDS = (
     "dryer",
     "vacuum",
 )
+
+# --- go2rtc WebRTC add-on wiring ---
+CONF_USE_GO2RTC = "use_go2rtc"
+CONF_GO2RTC_HOST = "go2rtc_host"
+GO2RTC_API_PORT = 11984
+GO2RTC_RTSP_PORT = 18554
+DEFAULT_GO2RTC_HOST = "homeassistant.local"

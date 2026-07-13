@@ -5,6 +5,11 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+import aiohttp
+import pytest
+from multidict import CIMultiDict
+from yarl import URL
+
 from custom_components.nanit import go2rtc
 from custom_components.nanit.const import (
     CONF_GO2RTC_HOST,
@@ -55,6 +60,46 @@ async def test_async_push_stream_puts_correct_request() -> None:
     assert kwargs["params"]["name"] == "CAM1"
     assert kwargs["params"]["src"] == "nanit:?camera_uid=CAM1&access_token=TOKEN"
     resp.raise_for_status.assert_called_once()
+
+
+async def test_async_push_stream_sanitizes_token_on_failure() -> None:
+    """A push failure must never leak the access token via the raised exception.
+
+    aiohttp's ClientResponseError stringifies to include the full request URL
+    (query params and all) — which for us includes ``access_token=<TOKEN>``.
+    `async_push_stream` must re-raise a sanitized error instead, with the
+    original token-bearing exception unreachable via __cause__/__context__.
+    """
+    token = "SUPER-SECRET-TOKEN-VALUE"  # test sentinel, not a real secret
+    src = go2rtc.build_source_url("CAM1", token)
+    request_url = URL(f"http://hostx:11984/api/streams?src={src}")
+    request_info = aiohttp.RequestInfo(
+        url=request_url,
+        method="PUT",
+        headers=CIMultiDict(),
+        real_url=request_url,
+    )
+    token_bearing_err = aiohttp.ClientResponseError(
+        request_info=request_info,
+        history=(),
+        status=500,
+        message="Internal Server Error",
+    )
+    # Sanity check on the fixture itself: the token really is present in the
+    # original exception's string form (this is the leak we're guarding against).
+    assert token in str(token_bearing_err)
+
+    session = MagicMock()
+    session.put = MagicMock(side_effect=token_bearing_err)
+
+    with pytest.raises(Exception) as exc_info:
+        await go2rtc.async_push_stream(session, "hostx", "CAM1", token)
+
+    raised = exc_info.value
+    assert token not in str(raised)
+    assert "CAM1" in str(raised)
+    assert raised.__cause__ is None
+    assert raised.__context__ is None
 
 
 async def test_async_addon_reachable_true_false() -> None:

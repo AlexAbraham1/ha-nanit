@@ -52,11 +52,31 @@ def ingest_url(host: str, camera_uid: str) -> str:
 async def async_push_stream(
     session: aiohttp.ClientSession, host: str, camera_uid: str, access_token: str
 ) -> None:
-    """Create/update the camera's stream in the add-on's go2rtc via its API."""
+    """Create/update the camera's stream in the add-on's go2rtc via its API.
+
+    NOTE: the request URL/params embed the access token (via ``build_source_url``).
+    aiohttp exceptions (e.g. ``ClientResponseError``) stringify to include the
+    full request URL, so any failure here is re-raised as a sanitized
+    ``RuntimeError`` with no token and no source URL — and with the token-bearing
+    original exception deliberately left unchained (raised outside the ``except``
+    block), so it can't leak back out via ``exc_info``/``__cause__``/``__context__``.
+    """
     url = f"http://{host}:{GO2RTC_API_PORT}/api/streams"
     params = {"name": camera_uid, "src": build_source_url(camera_uid, access_token)}
-    async with session.put(url, params=params) as resp:
-        resp.raise_for_status()
+    sanitized_error: RuntimeError | None = None
+    try:
+        async with session.put(url, params=params) as resp:
+            resp.raise_for_status()
+    except Exception as err:  # noqa: BLE001 - deliberately broad: sanitize before re-raising
+        status = getattr(err, "status", "?")
+        sanitized_error = RuntimeError(f"go2rtc push failed for {camera_uid} (status {status})")
+    if sanitized_error is not None:
+        # Raised *outside* the except block (not `raise ... from err`/`from None`)
+        # so it picks up no implicit exception chain at all: both __cause__ and
+        # __context__ end up None, meaning the token-bearing original exception
+        # (which stringifies with the full request URL, token included) is not
+        # reachable from this exception even via exc_info/traceback internals.
+        raise sanitized_error
     LOGGER.debug("Pushed go2rtc stream for camera %s via %s", camera_uid, host)
 
 

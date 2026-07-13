@@ -224,8 +224,16 @@ class NanitHub:
         for camera_uid in self._camera_data:
             try:
                 await go2rtc.async_push_stream(session, host, camera_uid, access_token)
-            except Exception:  # noqa: BLE001
-                _LOGGER.warning("Failed to push go2rtc stream for %s", camera_uid, exc_info=True)
+            except Exception as err:  # noqa: BLE001
+                # Never log the raw exception (exc_info) here: the underlying
+                # go2rtc push failure can carry the access token in its request
+                # URL. Log only safe context — camera_uid, host, exception type.
+                _LOGGER.warning(
+                    "Failed to push go2rtc stream for %s to %s (%s)",
+                    camera_uid,
+                    host,
+                    type(err).__name__,
+                )
 
     async def _setup_camera(
         self,

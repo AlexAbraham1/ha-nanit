@@ -354,6 +354,60 @@ async def test_setup_no_push_when_disabled(hass, mock_nanit_client) -> None:
     push.assert_not_awaited()
 
 
+async def test_go2rtc_push_failure_is_isolated_and_token_never_logged(
+    hass, mock_nanit_client, caplog
+) -> None:
+    """One camera's go2rtc push failing must not stop the others, or log the token.
+
+    `_async_push_go2rtc_streams` pushes to every camera in a loop; a failure for
+    one camera_uid must be caught and logged safely (never the raw exception,
+    which for a real go2rtc failure would carry the access token in its URL) —
+    and must not prevent the remaining cameras from being pushed.
+    """
+    import logging
+
+    from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
+
+    mock_nanit_client.async_get_babies.return_value = [MOCK_BABY_1, MOCK_BABY_2]
+    mock_nanit_client.camera.side_effect = lambda **kw: _make_mock_camera(kw["uid"], kw["baby_uid"])
+
+    entry = _make_entry(hass, options={CONF_USE_GO2RTC: True, CONF_GO2RTC_HOST: "hostx"})
+    hub = NanitHub(hass, MagicMock(), entry)
+
+    sentinel_token = "SENTINEL-ACCESS-TOKEN-DO-NOT-LOG"  # test sentinel
+
+    async def push_side_effect(_session, _host, camera_uid, _access_token):
+        if camera_uid == MOCK_BABY_1.camera_uid:
+            # Mirrors what go2rtc.async_push_stream now raises on failure: a
+            # sanitized error whose message never contains the token.
+            raise RuntimeError(f"go2rtc push failed for {camera_uid} (status 500)")
+
+    with (
+        patch("custom_components.nanit.hub.NanitPushCoordinator") as push_cls,
+        patch("custom_components.nanit.hub.NanitCloudCoordinator") as cloud_cls,
+        patch("custom_components.nanit.hub.NanitNetworkCoordinator") as net_cls,
+        patch(
+            "custom_components.nanit.hub.go2rtc.async_push_stream",
+            AsyncMock(side_effect=push_side_effect),
+        ) as push,
+    ):
+        push_cls.return_value = MagicMock(async_setup=AsyncMock())
+        cloud_cls.return_value = MagicMock(async_config_entry_first_refresh=AsyncMock())
+        net_cls.return_value = MagicMock(async_config_entry_first_refresh=AsyncMock())
+
+        with caplog.at_level(logging.WARNING):
+            # Should not raise, despite MOCK_BABY_1's push failing.
+            await hub.async_setup()
+            # Feed the sentinel token through explicitly too, exercising the
+            # real failure path with a known token value to search logs for.
+            await hub._async_push_go2rtc_streams(sentinel_token)
+
+    pushed_uids = {c.args[2] for c in push.await_args_list}
+    assert MOCK_BABY_2.camera_uid in pushed_uids
+
+    assert sentinel_token not in caplog.text
+
+
 async def test_token_refresh_pushes_go2rtc(hass, mock_nanit_client) -> None:
     from unittest.mock import AsyncMock, patch
 

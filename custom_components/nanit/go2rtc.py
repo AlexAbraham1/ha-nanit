@@ -94,22 +94,41 @@ async def async_addon_reachable(session: aiohttp.ClientSession, host: str) -> bo
         return False
 
 
-async def async_get_frame(session: aiohttp.ClientSession, host: str, camera_uid: str) -> bytes:
+async def async_get_frame(
+    session: aiohttp.ClientSession,
+    host: str,
+    camera_uid: str,
+    *,
+    attempts: int = 3,
+    delay: float = 0.7,
+) -> bytes:
     """Return a JPEG still from the add-on's live feed for a camera.
 
     GETs go2rtc's ``/api/frame.jpeg`` (which renders a keyframe via the add-on's
     ffmpeg). The frame URL carries no access token, so — unlike
-    ``async_push_stream`` — no exception sanitization is needed. Raises
-    ``RuntimeError`` on non-200, timeout, or transport error.
+    ``async_push_stream`` — no exception sanitization is needed.
+
+    go2rtc's transcode intermittently lands on a corrupt/non-keyframe H264
+    frame and returns a 500 (``exit status 183``); this is transient, so on a
+    non-200 or a transport error we retry up to ``attempts`` times, sleeping
+    ``delay`` seconds between attempts so a fresh keyframe can arrive. Raises
+    the most recent ``RuntimeError`` if every attempt fails.
     """
     url = f"http://{host}:{GO2RTC_API_PORT}/api/frame.jpeg?src={camera_uid}"
-    try:
-        async with asyncio.timeout(10):
-            async with session.get(url) as resp:
-                if resp.status != 200:
-                    raise RuntimeError(
-                        f"go2rtc frame fetch failed for {camera_uid} (status {resp.status})"
-                    )
-                return await resp.read()
-    except (TimeoutError, aiohttp.ClientError, OSError) as err:
-        raise RuntimeError(f"go2rtc frame fetch failed for {camera_uid}: {err}") from err
+    last_error: RuntimeError | None = None
+    for attempt in range(attempts):
+        try:
+            async with asyncio.timeout(10):
+                async with session.get(url) as resp:
+                    if resp.status != 200:
+                        last_error = RuntimeError(
+                            f"go2rtc frame fetch failed for {camera_uid} (status {resp.status})"
+                        )
+                    else:
+                        return await resp.read()
+        except (TimeoutError, aiohttp.ClientError, OSError) as err:
+            last_error = RuntimeError(f"go2rtc frame fetch failed for {camera_uid}: {err}")
+        if attempt < attempts - 1:
+            await asyncio.sleep(delay)
+    assert last_error is not None  # attempts >= 1, so the loop always sets this
+    raise last_error

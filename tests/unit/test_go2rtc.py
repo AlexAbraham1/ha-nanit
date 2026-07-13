@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
@@ -168,13 +168,48 @@ async def test_async_get_frame_raises_on_non_200() -> None:
     session = MagicMock()
     session.get = MagicMock(return_value=cm)
 
-    with pytest.raises(RuntimeError):
-        await go2rtc.async_get_frame(session, "host9", "CAMX")
+    with patch("custom_components.nanit.go2rtc.asyncio.sleep", AsyncMock()):
+        with pytest.raises(RuntimeError):
+            await go2rtc.async_get_frame(session, "host9", "CAMX")
+
+    assert session.get.call_count == 3
 
 
 async def test_async_get_frame_raises_on_transport_error() -> None:
     session = MagicMock()
     session.get = MagicMock(side_effect=aiohttp.ClientError("boom"))
 
-    with pytest.raises(RuntimeError):
-        await go2rtc.async_get_frame(session, "host9", "CAMX")
+    with patch("custom_components.nanit.go2rtc.asyncio.sleep", AsyncMock()):
+        with pytest.raises(RuntimeError):
+            await go2rtc.async_get_frame(session, "host9", "CAMX")
+
+    assert session.get.call_count == 3
+
+
+async def test_async_get_frame_retries_then_succeeds() -> None:
+    """First call hits a transcode-corrupt 500, second call gets a good frame.
+
+    Exercises the real retry path end-to-end: assert the actual returned
+    bytes (not just that session.get was called twice).
+    """
+    fail_resp = MagicMock()
+    fail_resp.status = 500
+    fail_resp.read = AsyncMock(return_value=b"")
+    fail_cm = MagicMock()
+    fail_cm.__aenter__ = AsyncMock(return_value=fail_resp)
+    fail_cm.__aexit__ = AsyncMock(return_value=False)
+
+    ok_resp = MagicMock()
+    ok_resp.status = 200
+    ok_resp.read = AsyncMock(return_value=b"\xff\xd8jpegbytes")
+    ok_cm = MagicMock()
+    ok_cm.__aenter__ = AsyncMock(return_value=ok_resp)
+    ok_cm.__aexit__ = AsyncMock(return_value=False)
+
+    session = MagicMock()
+    session.get = MagicMock(side_effect=[fail_cm, ok_cm])
+
+    out = await go2rtc.async_get_frame(session, "host9", "CAMX", delay=0)
+
+    assert out == b"\xff\xd8jpegbytes"
+    assert session.get.call_count == 2

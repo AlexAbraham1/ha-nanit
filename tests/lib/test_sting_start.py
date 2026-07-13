@@ -60,6 +60,15 @@ def _form_fields(form: aiohttp.FormData) -> dict[str, object]:
     return {opts["name"]: value for opts, _headers, value in form._fields}
 
 
+def _form_field_content_type(form: aiohttp.FormData, name: str) -> str | None:
+    # aiohttp FormData stores (options, headers, value) tuples in _fields;
+    # the content type lives in the per-field headers.
+    for opts, headers, _value in form._fields:
+        if opts["name"] == name:
+            return headers.get("Content-Type")
+    return None
+
+
 def _wire_transport(cam: NanitCamera) -> list[bytes]:
     sent: list[bytes] = []
     cam._transport = MagicMock()
@@ -90,6 +99,9 @@ async def test_full_flow_sends_sting_start_with_midpoint() -> None:
     fields = _form_fields(kwargs["data"])
     assert fields["camera_status"] == "rgb"
     assert "image" in fields
+    # The Nanit API rejects JPEG with HTTP 422 ("image must be a png file") —
+    # the form field must carry PNG's content type, not JPEG's.
+    assert _form_field_content_type(kwargs["data"], "image") == "image/png"
 
     # ws send carried the computed midpoint (150, 60) and required fields.
     assert len(sent) == 1

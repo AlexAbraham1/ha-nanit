@@ -175,6 +175,20 @@ def _disable_state_writes(entity: Any) -> None:
     entity.async_write_ha_state = MagicMock()
 
 
+def _make_test_jpeg() -> bytes:
+    """Build a tiny real JPEG so the button's PNG conversion is genuinely exercised."""
+    from io import BytesIO
+
+    from PIL import Image
+
+    buf = BytesIO()
+    Image.new("RGB", (4, 4)).save(buf, format="JPEG")
+    return buf.getvalue()
+
+
+_PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+
+
 @pytest.mark.parametrize(
     ("sensor_key", "expected"),
     [
@@ -833,7 +847,7 @@ def test_camera_does_not_invalidate_when_no_stream_cached() -> None:
 
 
 async def test_start_breathing_button_fetches_frame_then_presses(hass) -> None:
-    """Press fetches a go2rtc frame and passes it to the camera."""
+    """Press fetches a go2rtc JPEG frame, converts it to PNG, and passes that to the camera."""
     from unittest.mock import AsyncMock, MagicMock, patch
 
     from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
@@ -848,11 +862,13 @@ async def test_start_breathing_button_fetches_frame_then_presses(hass) -> None:
 
     with patch(
         "custom_components.nanit.button.go2rtc.async_get_frame",
-        AsyncMock(return_value=b"\xff\xd8frame"),
+        AsyncMock(return_value=_make_test_jpeg()),
     ):
         await button.async_press()
 
-    camera.async_start_breathing_tracking.assert_awaited_once_with(b"\xff\xd8frame")
+    camera.async_start_breathing_tracking.assert_awaited_once()
+    (sent_frame,), _ = camera.async_start_breathing_tracking.call_args
+    assert sent_frame.startswith(_PNG_MAGIC)
 
 
 async def test_start_breathing_button_errors_when_go2rtc_disabled(hass) -> None:
@@ -919,10 +935,36 @@ async def test_start_breathing_button_surfaces_error(hass) -> None:
     button.hass = hass
     with patch(
         "custom_components.nanit.button.go2rtc.async_get_frame",
-        AsyncMock(return_value=b"\xff\xd8frame"),
+        AsyncMock(return_value=_make_test_jpeg()),
     ):
         with pytest.raises(HomeAssistantError):
             await button.async_press()
+
+
+async def test_start_breathing_button_errors_when_conversion_fails(hass) -> None:
+    """A frame that can't be decoded as an image raises HomeAssistantError and never
+    reaches the camera."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from homeassistant.exceptions import HomeAssistantError
+
+    from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
+
+    coordinator = _push_coordinator(_camera_state())
+    coordinator.config_entry.options = {CONF_USE_GO2RTC: True, CONF_GO2RTC_HOST: "hostx"}
+    camera = MagicMock()
+    camera.uid = "cam_uid_1"
+    camera.async_start_breathing_tracking = AsyncMock()
+    button = NanitStartBreathingButton(coordinator, camera)
+    button.hass = hass
+
+    with patch(
+        "custom_components.nanit.button.go2rtc.async_get_frame",
+        AsyncMock(return_value=b"not-an-image"),
+    ):
+        with pytest.raises(HomeAssistantError):
+            await button.async_press()
+    camera.async_start_breathing_tracking.assert_not_called()
 
 
 async def test_stream_source_uses_go2rtc_when_enabled_and_reachable(hass) -> None:

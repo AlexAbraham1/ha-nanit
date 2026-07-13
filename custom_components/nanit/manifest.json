@@ -1,7 +1,7 @@
 {
   "domain": "nanit",
   "name": "Nanit",
-  "version": "1.11.0",
+  "version": "1.11.1",
   "homeassistant": "2026.5.0",
   "documentation": "https://github.com/wealthystudent/ha-nanit",
   "issue_tracker": "https://github.com/wealthystudent/ha-nanit/issues",
@@ -15,7 +15,7 @@
   ],
   "iot_class": "cloud_push",
   "integration_type": "hub",
-  "requirements": [],
+  "requirements": ["Pillow"],
   "loggers": [
     "custom_components.nanit"
   ]

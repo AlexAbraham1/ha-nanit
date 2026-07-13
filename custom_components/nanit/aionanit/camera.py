@@ -472,9 +472,12 @@ class NanitCamera:
     async def async_start_breathing_tracking(self, frame: bytes) -> None:
         """Start a Breathing Motion Monitoring ("STING") session from a still.
 
-        The caller supplies a JPEG ``frame`` (e.g. from the go2rtc add-on). This
-        asks the Nanit pattern API where the Breathing Wear band is, then tells
-        the camera to begin measuring at that location. The camera then pushes
+        The caller supplies a PNG ``frame`` (e.g. converted from a go2rtc JPEG
+        snapshot by the HA layer). Nanit's pattern API hard-requires PNG — it
+        rejects JPEG with HTTP 422 (``"image must be a png file"``), matching
+        what the Nanit app itself sends. This asks the Nanit pattern API where
+        the Breathing Wear band is, then tells the camera to begin measuring
+        at that location. The camera then pushes
         PUT_STING_STATUS frames (bpm/alert) while the band is detected and stops
         on its own when the baby leaves the crib — there is no stop command
         (matches the app).
@@ -503,13 +506,16 @@ class NanitCamera:
         """POST a still frame to the Nanit pattern API and return the detected
         breathing-band center as a Point.
 
+        ``frame`` must be PNG bytes — the API returns HTTP 422
+        (``"image must be a png file"``) for JPEG.
+
         Raises BreathingStartError on HTTP error, no detection, or a malformed
         response.
         """
         camera_status = "ir" if self._state.sensors.night else "rgb"
         token = await self._token_manager.async_get_access_token()
         form = aiohttp.FormData()
-        form.add_field("image", frame, content_type="image/jpeg", filename="image")
+        form.add_field("image", frame, content_type="image/png", filename="image")
         form.add_field("camera_status", camera_status)
         url = _BMM_SESSIONS_URL.format(baby_uid=self._baby_uid)
         try:

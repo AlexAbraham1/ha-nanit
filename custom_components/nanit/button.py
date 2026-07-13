@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from io import BytesIO
+
 from homeassistant.components.button import ButtonEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from PIL import Image
 
 from . import NanitConfigEntry, go2rtc
 from .aionanit.camera import NanitCamera
@@ -15,6 +18,18 @@ from .coordinator import NanitPushCoordinator
 from .entity import NanitEntity
 
 PARALLEL_UPDATES = 0
+
+
+def _jpeg_to_png(jpeg: bytes) -> bytes:
+    """Convert a JPEG frame to PNG.
+
+    Nanit's breathing-pattern API rejects JPEG with HTTP 422
+    ("image must be a png file") — it only accepts PNG, as the app sends.
+    """
+    with Image.open(BytesIO(jpeg)) as img:
+        buf = BytesIO()
+        img.convert("RGB").save(buf, format="PNG")
+        return buf.getvalue()
 
 
 async def async_setup_entry(
@@ -62,6 +77,10 @@ class NanitStartBreathingButton(NanitEntity, ButtonEntity):
                 f"Could not capture a camera frame for breathing monitoring: {err}"
             ) from err
         try:
-            await self._camera.async_start_breathing_tracking(frame)
+            png = await self.hass.async_add_executor_job(_jpeg_to_png, frame)
+        except Exception as err:  # any decode/encode failure
+            raise HomeAssistantError(f"Could not convert the camera frame to PNG: {err}") from err
+        try:
+            await self._camera.async_start_breathing_tracking(png)
         except BreathingStartError as err:
             raise HomeAssistantError(f"Could not start breathing monitoring: {err}") from err

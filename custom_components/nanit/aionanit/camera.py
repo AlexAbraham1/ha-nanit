@@ -600,33 +600,6 @@ class NanitCamera:
         )
 
     # ------------------------------------------------------------------
-    # Snapshot
-    # ------------------------------------------------------------------
-
-    async def async_get_snapshot(self) -> bytes | None:
-        """Get a JPEG snapshot from the cloud REST endpoint.
-
-        Returns None if the endpoint is unavailable or returns an error.
-        """
-        try:
-            token = await self._token_manager.async_get_access_token()
-            resp = await self._session.get(
-                f"https://api.nanit.com/babies/{self._baby_uid}/snapshot",
-                headers={"Authorization": token},
-                timeout=aiohttp.ClientTimeout(total=15),
-            )
-            if resp.status == 200:
-                return await resp.read()
-            _LOGGER.debug(
-                "Snapshot endpoint returned %s for baby %s",
-                resp.status,
-                self._baby_uid,
-            )
-        except Exception as err:
-            _LOGGER.debug("Snapshot fetch failed: %s", err)
-        return None
-
-    # ------------------------------------------------------------------
     # Internal — header refresh for reconnect
     # ------------------------------------------------------------------
 

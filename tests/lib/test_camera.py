@@ -907,49 +907,6 @@ class TestStreaming:
 
 
 # ---------------------------------------------------------------------------
-# Snapshot
-# ---------------------------------------------------------------------------
-
-
-class TestSnapshot:
-    async def test_snapshot_success(self) -> None:
-        cam, tm, session = _make_camera()
-        tm.async_get_access_token = AsyncMock(return_value="snap_token")
-
-        mock_resp = AsyncMock()
-        mock_resp.status = 200
-        mock_resp.read = AsyncMock(return_value=b"\xff\xd8fake_jpeg")
-        session.get = AsyncMock(return_value=mock_resp)
-
-        result = await cam.async_get_snapshot()
-        assert result == b"\xff\xd8fake_jpeg"
-
-        session.get.assert_called_once_with(
-            "https://api.nanit.com/babies/baby_uid_1/snapshot",
-            headers={"Authorization": "snap_token"},
-            timeout=aiohttp.ClientTimeout(total=15),
-        )
-
-    async def test_snapshot_returns_none_on_404(self) -> None:
-        cam, tm, session = _make_camera()
-        tm.async_get_access_token = AsyncMock(return_value="snap_token")
-
-        mock_resp = AsyncMock()
-        mock_resp.status = 404
-        session.get = AsyncMock(return_value=mock_resp)
-
-        result = await cam.async_get_snapshot()
-        assert result is None
-
-    async def test_snapshot_returns_none_on_exception(self) -> None:
-        cam, tm, _session = _make_camera()
-        tm.async_get_access_token = AsyncMock(side_effect=aiohttp.ClientError("network error"))
-
-        result = await cam.async_get_snapshot()
-        assert result is None
-
-
-# ---------------------------------------------------------------------------
 # Lifecycle — async_stop
 # ---------------------------------------------------------------------------
 

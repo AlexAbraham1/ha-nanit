@@ -204,15 +204,19 @@ class NanitCameraEntity(NanitEntity, Camera):
         await self._async_fetch_snapshot()
 
     async def _async_fetch_snapshot(self) -> bytes | None:
-        """Fetch a snapshot from the cloud and update the cache."""
+        """Fetch a still from the go2rtc add-on and update the cache."""
+        entry = self.coordinator.config_entry
+        if not go2rtc.webrtc_enabled(entry):
+            return None
+        host = go2rtc.go2rtc_host(entry)
+        session = async_get_clientsession(self.hass)
         try:
-            image = await self._camera.async_get_snapshot()
+            image = await go2rtc.async_get_frame(session, host, self._camera.uid)
         except Exception:  # noqa: BLE001
             _LOGGER.debug("Failed to fetch snapshot for %s", self._camera.uid)
             return None
-        if image is not None:
-            self._cached_snapshot = image
-            self._cached_snapshot_at = time.monotonic()
+        self._cached_snapshot = image
+        self._cached_snapshot_at = time.monotonic()
         return image
 
     # ------------------------------------------------------------------

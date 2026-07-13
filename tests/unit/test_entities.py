@@ -990,3 +990,65 @@ async def test_stream_source_rtmps_when_disabled(hass) -> None:
     ent._async_start_streaming_safe = AsyncMock(return_value=True)
     url = await ent.stream_source()
     assert url == "rtmps://legacy/CAM1"
+
+
+async def test_fetch_snapshot_uses_go2rtc_frame(hass) -> None:
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from custom_components.nanit.camera import NanitCameraEntity
+    from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
+
+    coordinator = MagicMock()
+    coordinator.config_entry.options = {CONF_USE_GO2RTC: True, CONF_GO2RTC_HOST: "hostx"}
+    coordinator.data = None
+    camera = MagicMock()
+    camera.uid = "CAM1"
+    ent = NanitCameraEntity(coordinator, camera)
+    ent.hass = hass
+
+    with patch(
+        "custom_components.nanit.camera.go2rtc.async_get_frame",
+        AsyncMock(return_value=b"\xff\xd8still"),
+    ):
+        out = await ent._async_fetch_snapshot()
+
+    assert out == b"\xff\xd8still"
+    assert ent._cached_snapshot == b"\xff\xd8still"
+
+
+async def test_fetch_snapshot_none_when_go2rtc_disabled(hass) -> None:
+    from unittest.mock import MagicMock
+
+    from custom_components.nanit.camera import NanitCameraEntity
+    from custom_components.nanit.const import CONF_USE_GO2RTC
+
+    coordinator = MagicMock()
+    coordinator.config_entry.options = {CONF_USE_GO2RTC: False}
+    coordinator.data = None
+    camera = MagicMock()
+    camera.uid = "CAM1"
+    ent = NanitCameraEntity(coordinator, camera)
+    ent.hass = hass
+
+    assert await ent._async_fetch_snapshot() is None
+
+
+async def test_fetch_snapshot_none_on_fetch_error(hass) -> None:
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from custom_components.nanit.camera import NanitCameraEntity
+    from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
+
+    coordinator = MagicMock()
+    coordinator.config_entry.options = {CONF_USE_GO2RTC: True, CONF_GO2RTC_HOST: "hostx"}
+    coordinator.data = None
+    camera = MagicMock()
+    camera.uid = "CAM1"
+    ent = NanitCameraEntity(coordinator, camera)
+    ent.hass = hass
+
+    with patch(
+        "custom_components.nanit.camera.go2rtc.async_get_frame",
+        AsyncMock(side_effect=RuntimeError("down")),
+    ):
+        assert await ent._async_fetch_snapshot() is None

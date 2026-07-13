@@ -16,7 +16,9 @@ import aiohttp
 from homeassistant.const import CONF_ACCESS_TOKEN
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from . import go2rtc
 from .aionanit.exceptions import (
     NanitAuthError,
     NanitCameraUnavailable,
@@ -208,6 +210,23 @@ class NanitHub:
                 ", ".join(failed_cameras),
             )
 
+        # Feed the go2rtc add-on the current token so its streams are ready.
+        if go2rtc.webrtc_enabled(self._entry) and self._client.token_manager is not None:
+            access_token = await self._client.token_manager.async_get_access_token()
+            await self._async_push_go2rtc_streams(access_token)
+
+    async def _async_push_go2rtc_streams(self, access_token: str) -> None:
+        """Push the current access token to the go2rtc add-on for every camera."""
+        if not go2rtc.webrtc_enabled(self._entry):
+            return
+        host = go2rtc.go2rtc_host(self._entry)
+        session = async_get_clientsession(self._hass)
+        for camera_uid in self._camera_data:
+            try:
+                await go2rtc.async_push_stream(session, host, camera_uid, access_token)
+            except Exception:  # noqa: BLE001
+                _LOGGER.warning("Failed to push go2rtc stream for %s", camera_uid, exc_info=True)
+
     async def _setup_camera(
         self,
         baby: Baby,
@@ -304,6 +323,9 @@ class NanitHub:
                 CONF_REFRESH_TOKEN: new_refresh,
             },
         )
+
+        if go2rtc.webrtc_enabled(self._entry):
+            self._hass.async_create_task(self._async_push_go2rtc_streams(new_access))
 
     def get_sound_light(
         self,

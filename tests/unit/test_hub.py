@@ -312,3 +312,67 @@ async def test_setup_camera_timeout_treated_as_connection_failure(
 
     assert len(hub.camera_data) == 1
     assert MOCK_BABY_2.camera_uid in hub.camera_data
+
+
+async def test_setup_pushes_go2rtc_when_enabled(hass, mock_nanit_client) -> None:
+    from unittest.mock import AsyncMock, patch
+
+    from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
+
+    entry = _make_entry(hass, options={CONF_USE_GO2RTC: True, CONF_GO2RTC_HOST: "hostx"})
+    hub = NanitHub(hass, MagicMock(), entry)
+    with (
+        patch("custom_components.nanit.hub.NanitPushCoordinator") as push_cls,
+        patch("custom_components.nanit.hub.NanitCloudCoordinator") as cloud_cls,
+        patch("custom_components.nanit.hub.NanitNetworkCoordinator") as net_cls,
+        patch("custom_components.nanit.hub.go2rtc.async_push_stream", AsyncMock()) as push,
+    ):
+        push_cls.return_value = MagicMock(async_setup=AsyncMock())
+        cloud_cls.return_value = MagicMock(async_config_entry_first_refresh=AsyncMock())
+        net_cls.return_value = MagicMock(async_config_entry_first_refresh=AsyncMock())
+        await hub.async_setup()
+    assert push.await_count >= 1
+    pushed_uids = {c.args[2] for c in push.await_args_list}
+    assert MOCK_BABY_1.camera_uid in pushed_uids
+
+
+async def test_setup_no_push_when_disabled(hass, mock_nanit_client) -> None:
+    from unittest.mock import AsyncMock, patch
+
+    entry = _make_entry(hass)  # options empty → disabled
+    hub = NanitHub(hass, MagicMock(), entry)
+    with (
+        patch("custom_components.nanit.hub.NanitPushCoordinator") as push_cls,
+        patch("custom_components.nanit.hub.NanitCloudCoordinator") as cloud_cls,
+        patch("custom_components.nanit.hub.NanitNetworkCoordinator") as net_cls,
+        patch("custom_components.nanit.hub.go2rtc.async_push_stream", AsyncMock()) as push,
+    ):
+        push_cls.return_value = MagicMock(async_setup=AsyncMock())
+        cloud_cls.return_value = MagicMock(async_config_entry_first_refresh=AsyncMock())
+        net_cls.return_value = MagicMock(async_config_entry_first_refresh=AsyncMock())
+        await hub.async_setup()
+    push.assert_not_awaited()
+
+
+async def test_token_refresh_pushes_go2rtc(hass, mock_nanit_client) -> None:
+    from unittest.mock import AsyncMock, patch
+
+    from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
+
+    entry = _make_entry(hass, options={CONF_USE_GO2RTC: True, CONF_GO2RTC_HOST: "hostx"})
+    hub = NanitHub(hass, MagicMock(), entry)
+    with (
+        patch("custom_components.nanit.hub.NanitPushCoordinator") as push_cls,
+        patch("custom_components.nanit.hub.NanitCloudCoordinator") as cloud_cls,
+        patch("custom_components.nanit.hub.NanitNetworkCoordinator") as net_cls,
+        patch("custom_components.nanit.hub.go2rtc.async_push_stream", AsyncMock()),
+    ):
+        push_cls.return_value = MagicMock(async_setup=AsyncMock())
+        cloud_cls.return_value = MagicMock(async_config_entry_first_refresh=AsyncMock())
+        net_cls.return_value = MagicMock(async_config_entry_first_refresh=AsyncMock())
+        await hub.async_setup()
+        with patch("custom_components.nanit.hub.go2rtc.async_push_stream", AsyncMock()) as push:
+            hub._on_tokens_refreshed("new_access", "new_refresh")
+            await hass.async_block_till_done()
+    assert push.await_count >= 1
+    assert push.await_args_list[0].args[3] == "new_access"

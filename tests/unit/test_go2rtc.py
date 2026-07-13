@@ -139,3 +139,42 @@ async def test_async_addon_reachable_true_false() -> None:
     session_bad = MagicMock()
     session_bad.get = MagicMock(side_effect=OSError("refused"))
     assert await go2rtc.async_addon_reachable(session_bad, "hostx") is False
+
+
+async def test_async_get_frame_returns_bytes_on_200() -> None:
+    resp = MagicMock()
+    resp.status = 200
+    resp.read = AsyncMock(return_value=b"\xff\xd8jpegbytes")
+    cm = MagicMock()
+    cm.__aenter__ = AsyncMock(return_value=resp)
+    cm.__aexit__ = AsyncMock(return_value=False)
+    session = MagicMock()
+    session.get = MagicMock(return_value=cm)
+
+    out = await go2rtc.async_get_frame(session, "host9", "CAMX")
+
+    assert out == b"\xff\xd8jpegbytes"
+    url = session.get.call_args.args[0]
+    assert url == "http://host9:11984/api/frame.jpeg?src=CAMX"
+
+
+async def test_async_get_frame_raises_on_non_200() -> None:
+    resp = MagicMock()
+    resp.status = 500
+    resp.read = AsyncMock(return_value=b"")
+    cm = MagicMock()
+    cm.__aenter__ = AsyncMock(return_value=resp)
+    cm.__aexit__ = AsyncMock(return_value=False)
+    session = MagicMock()
+    session.get = MagicMock(return_value=cm)
+
+    with pytest.raises(RuntimeError):
+        await go2rtc.async_get_frame(session, "host9", "CAMX")
+
+
+async def test_async_get_frame_raises_on_transport_error() -> None:
+    session = MagicMock()
+    session.get = MagicMock(side_effect=aiohttp.ClientError("boom"))
+
+    with pytest.raises(RuntimeError):
+        await go2rtc.async_get_frame(session, "host9", "CAMX")

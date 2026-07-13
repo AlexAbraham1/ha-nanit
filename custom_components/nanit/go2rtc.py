@@ -92,3 +92,24 @@ async def async_addon_reachable(session: aiohttp.ClientSession, host: str) -> bo
     except (TimeoutError, aiohttp.ClientError, OSError) as err:
         LOGGER.debug("go2rtc add-on unreachable at %s: %s", host, err)
         return False
+
+
+async def async_get_frame(session: aiohttp.ClientSession, host: str, camera_uid: str) -> bytes:
+    """Return a JPEG still from the add-on's live feed for a camera.
+
+    GETs go2rtc's ``/api/frame.jpeg`` (which renders a keyframe via the add-on's
+    ffmpeg). The frame URL carries no access token, so — unlike
+    ``async_push_stream`` — no exception sanitization is needed. Raises
+    ``RuntimeError`` on non-200, timeout, or transport error.
+    """
+    url = f"http://{host}:{GO2RTC_API_PORT}/api/frame.jpeg?src={camera_uid}"
+    try:
+        async with asyncio.timeout(10):
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    raise RuntimeError(
+                        f"go2rtc frame fetch failed for {camera_uid} (status {resp.status})"
+                    )
+                return await resp.read()
+    except (TimeoutError, aiohttp.ClientError, OSError) as err:
+        raise RuntimeError(f"go2rtc frame fetch failed for {camera_uid}: {err}") from err

@@ -5,9 +5,10 @@ from __future__ import annotations
 from homeassistant.components.button import ButtonEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import NanitConfigEntry
+from . import NanitConfigEntry, go2rtc
 from .aionanit.camera import NanitCamera
 from .aionanit.exceptions import BreathingStartError
 from .coordinator import NanitPushCoordinator
@@ -46,9 +47,21 @@ class NanitStartBreathingButton(NanitEntity, ButtonEntity):
         self._attr_unique_id = f"{camera.uid}_start_breathing_tracking"
 
     async def async_press(self) -> None:
-        """Send PUT_STING_START to the camera."""
+        """Fetch a still from the go2rtc add-on, then send PUT_STING_START."""
+        entry = self.coordinator.config_entry
+        if not go2rtc.webrtc_enabled(entry):
+            raise HomeAssistantError(
+                "The go2rtc add-on must be enabled to start breathing monitoring"
+            )
+        host = go2rtc.go2rtc_host(entry)
+        session = async_get_clientsession(self.hass)
         try:
-            # TODO(task 4): pass a real frame (from go2rtc) instead of no args.
-            await self._camera.async_start_breathing_tracking()  # type: ignore[call-arg]
+            frame = await go2rtc.async_get_frame(session, host, self._camera.uid)
+        except RuntimeError as err:
+            raise HomeAssistantError(
+                f"Could not capture a camera frame for breathing monitoring: {err}"
+            ) from err
+        try:
+            await self._camera.async_start_breathing_tracking(frame)
         except BreathingStartError as err:
             raise HomeAssistantError(f"Could not start breathing monitoring: {err}") from err

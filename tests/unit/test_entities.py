@@ -832,30 +832,97 @@ def test_camera_does_not_invalidate_when_no_stream_cached() -> None:
     assert entity._prev_last_seen == t2
 
 
-async def test_start_breathing_button_presses_camera() -> None:
-    """Pressing the button calls camera.async_start_breathing_tracking()."""
+async def test_start_breathing_button_fetches_frame_then_presses(hass) -> None:
+    """Press fetches a go2rtc frame and passes it to the camera."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
+
+    coordinator = _push_coordinator(_camera_state())
+    coordinator.config_entry.options = {CONF_USE_GO2RTC: True, CONF_GO2RTC_HOST: "hostx"}
     camera = MagicMock()
     camera.uid = "cam_uid_1"
     camera.async_start_breathing_tracking = AsyncMock()
-    button = NanitStartBreathingButton(_push_coordinator(_camera_state()), camera)
-    await button.async_press()
-    camera.async_start_breathing_tracking.assert_awaited_once()
+    button = NanitStartBreathingButton(coordinator, camera)
+    button.hass = hass
+
+    with patch(
+        "custom_components.nanit.button.go2rtc.async_get_frame",
+        AsyncMock(return_value=b"\xff\xd8frame"),
+    ):
+        await button.async_press()
+
+    camera.async_start_breathing_tracking.assert_awaited_once_with(b"\xff\xd8frame")
 
 
-async def test_start_breathing_button_surfaces_error() -> None:
+async def test_start_breathing_button_errors_when_go2rtc_disabled(hass) -> None:
+    from unittest.mock import AsyncMock, MagicMock
+
+    from homeassistant.exceptions import HomeAssistantError
+
+    from custom_components.nanit.const import CONF_USE_GO2RTC
+
+    coordinator = _push_coordinator(_camera_state())
+    coordinator.config_entry.options = {CONF_USE_GO2RTC: False}
+    camera = MagicMock()
+    camera.uid = "cam_uid_1"
+    camera.async_start_breathing_tracking = AsyncMock()
+    button = NanitStartBreathingButton(coordinator, camera)
+    button.hass = hass
+
+    with pytest.raises(HomeAssistantError):
+        await button.async_press()
+    camera.async_start_breathing_tracking.assert_not_called()
+
+
+async def test_start_breathing_button_errors_when_frame_fetch_fails(hass) -> None:
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from homeassistant.exceptions import HomeAssistantError
+
+    from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
+
+    coordinator = _push_coordinator(_camera_state())
+    coordinator.config_entry.options = {CONF_USE_GO2RTC: True, CONF_GO2RTC_HOST: "hostx"}
+    camera = MagicMock()
+    camera.uid = "cam_uid_1"
+    camera.async_start_breathing_tracking = AsyncMock()
+    button = NanitStartBreathingButton(coordinator, camera)
+    button.hass = hass
+
+    with patch(
+        "custom_components.nanit.button.go2rtc.async_get_frame",
+        AsyncMock(side_effect=RuntimeError("no frame")),
+    ):
+        with pytest.raises(HomeAssistantError):
+            await button.async_press()
+    camera.async_start_breathing_tracking.assert_not_called()
+
+
+async def test_start_breathing_button_surfaces_error(hass) -> None:
     """A BreathingStartError from the camera surfaces as HomeAssistantError."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+
     from homeassistant.exceptions import HomeAssistantError
 
     from custom_components.nanit.aionanit.exceptions import BreathingStartError
+    from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
 
+    coordinator = _push_coordinator(_camera_state())
+    coordinator.config_entry.options = {CONF_USE_GO2RTC: True, CONF_GO2RTC_HOST: "hostx"}
     camera = MagicMock()
     camera.uid = "cam_uid_1"
     camera.async_start_breathing_tracking = AsyncMock(
         side_effect=BreathingStartError("no band detected")
     )
-    button = NanitStartBreathingButton(_push_coordinator(_camera_state()), camera)
-    with pytest.raises(HomeAssistantError):
-        await button.async_press()
+    button = NanitStartBreathingButton(coordinator, camera)
+    button.hass = hass
+    with patch(
+        "custom_components.nanit.button.go2rtc.async_get_frame",
+        AsyncMock(return_value=b"\xff\xd8frame"),
+    ):
+        with pytest.raises(HomeAssistantError):
+            await button.async_press()
 
 
 async def test_stream_source_uses_go2rtc_when_enabled_and_reachable(hass) -> None:

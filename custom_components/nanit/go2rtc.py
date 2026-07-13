@@ -65,8 +65,9 @@ async def async_push_stream(
     params = {"name": camera_uid, "src": build_source_url(camera_uid, access_token)}
     sanitized_error: RuntimeError | None = None
     try:
-        async with session.put(url, params=params) as resp:
-            resp.raise_for_status()
+        async with asyncio.timeout(5):
+            async with session.put(url, params=params) as resp:
+                resp.raise_for_status()
     except Exception as err:  # noqa: BLE001 - deliberately broad: sanitize before re-raising
         status = getattr(err, "status", "?")
         sanitized_error = RuntimeError(f"go2rtc push failed for {camera_uid} (status {status})")

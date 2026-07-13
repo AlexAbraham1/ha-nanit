@@ -102,6 +102,28 @@ async def test_async_push_stream_sanitizes_token_on_failure() -> None:
     assert raised.__context__ is None
 
 
+async def test_async_push_stream_sanitizes_token_on_timeout() -> None:
+    """A hung PUT must time out (not hang integration setup) and still not leak the token.
+
+    Simulates a black-holed ``go2rtc_host`` (wrong IP/firewall DROP): the PUT
+    never completes, so ``asyncio.timeout`` fires. The resulting TimeoutError
+    is caught by the same broad ``except Exception`` and folded into the same
+    sanitized RuntimeError as any other failure — no token, no chain.
+    """
+    token = "SUPER-SECRET-TOKEN-VALUE"  # test sentinel, not a real secret
+    session = MagicMock()
+    session.put = MagicMock(side_effect=TimeoutError())
+
+    with pytest.raises(Exception) as exc_info:
+        await go2rtc.async_push_stream(session, "hostx", "CAM1", token)
+
+    raised = exc_info.value
+    assert token not in str(raised)
+    assert "CAM1" in str(raised)
+    assert raised.__cause__ is None
+    assert raised.__context__ is None
+
+
 async def test_async_addon_reachable_true_false() -> None:
     ok_resp = MagicMock(status=200)
     ok_ctx = MagicMock()

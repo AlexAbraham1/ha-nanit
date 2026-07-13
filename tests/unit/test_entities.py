@@ -575,6 +575,7 @@ def test_camera_entity_is_on_true_when_sleep_mode_disabled() -> None:
 
 async def test_camera_stream_source_returns_url_when_on() -> None:
     coordinator = _push_coordinator(_camera_state(sleep_mode=False))
+    coordinator.config_entry.options = {}  # go2rtc disabled -> legacy RTMPS path
     camera = MagicMock(uid="cam_1")
     camera.async_get_stream_rtmps_url = AsyncMock(return_value="rtmps://stream-url")
     camera.async_start_streaming = AsyncMock()
@@ -601,6 +602,7 @@ async def test_camera_stream_source_returns_none_when_camera_off() -> None:
 
 async def test_camera_stream_source_returns_none_when_camera_api_fails() -> None:
     coordinator = _push_coordinator(_camera_state(sleep_mode=False))
+    coordinator.config_entry.options = {}  # go2rtc disabled -> legacy RTMPS path
     camera = MagicMock(uid="cam_1")
     camera.async_get_stream_rtmps_url = AsyncMock(side_effect=RuntimeError("offline"))
     camera.async_start_streaming = AsyncMock()
@@ -854,3 +856,70 @@ async def test_start_breathing_button_surfaces_error() -> None:
     button = NanitStartBreathingButton(_push_coordinator(_camera_state()), camera)
     with pytest.raises(HomeAssistantError):
         await button.async_press()
+
+
+async def test_stream_source_uses_go2rtc_when_enabled_and_reachable(hass) -> None:
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from custom_components.nanit.camera import NanitCameraEntity
+    from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
+
+    coordinator = MagicMock()
+    coordinator.config_entry.options = {CONF_USE_GO2RTC: True, CONF_GO2RTC_HOST: "hostx"}
+    coordinator.data = None  # is_on defaults True
+    camera = MagicMock()
+    camera.uid = "CAM1"
+
+    ent = NanitCameraEntity(coordinator, camera)
+    ent.hass = hass
+    with patch(
+        "custom_components.nanit.camera.go2rtc.async_addon_reachable",
+        AsyncMock(return_value=True),
+    ):
+        url = await ent.stream_source()
+    assert url == "rtsp://hostx:18554/CAM1"
+
+
+async def test_stream_source_falls_back_to_rtmps_when_unreachable(hass) -> None:
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from custom_components.nanit.camera import NanitCameraEntity
+    from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
+
+    coordinator = MagicMock()
+    coordinator.config_entry.options = {CONF_USE_GO2RTC: True, CONF_GO2RTC_HOST: "hostx"}
+    coordinator.data = None
+    camera = MagicMock()
+    camera.uid = "CAM1"
+    camera.async_get_stream_rtmps_url = AsyncMock(return_value="rtmps://legacy/CAM1")
+
+    ent = NanitCameraEntity(coordinator, camera)
+    ent.hass = hass
+    with (
+        patch(
+            "custom_components.nanit.camera.go2rtc.async_addon_reachable",
+            AsyncMock(return_value=False),
+        ),
+        patch.object(ent, "_async_start_streaming_safe", AsyncMock(return_value=True)),
+    ):
+        url = await ent.stream_source()
+    assert url == "rtmps://legacy/CAM1"
+
+
+async def test_stream_source_rtmps_when_disabled(hass) -> None:
+    from unittest.mock import AsyncMock, MagicMock
+
+    from custom_components.nanit.camera import NanitCameraEntity
+
+    coordinator = MagicMock()
+    coordinator.config_entry.options = {}  # disabled
+    coordinator.data = None
+    camera = MagicMock()
+    camera.uid = "CAM1"
+    camera.async_get_stream_rtmps_url = AsyncMock(return_value="rtmps://legacy/CAM1")
+
+    ent = NanitCameraEntity(coordinator, camera)
+    ent.hass = hass
+    ent._async_start_streaming_safe = AsyncMock(return_value=True)
+    url = await ent.stream_source()
+    assert url == "rtmps://legacy/CAM1"

@@ -9,9 +9,10 @@ from datetime import datetime
 
 from homeassistant.components.camera import Camera, CameraEntityFeature
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import NanitConfigEntry
+from . import NanitConfigEntry, go2rtc
 from .aionanit import NanitCamera
 from .coordinator import NanitPushCoordinator
 from .entity import NanitEntity
@@ -106,15 +107,26 @@ class NanitCameraEntity(NanitEntity, Camera):
     # ------------------------------------------------------------------
 
     async def stream_source(self) -> str | None:
-        """Return the RTMPS stream URL.
+        """Return the live stream URL.
 
-        Sends PUT_STREAMING *before* returning the URL so the camera is
-        already pushing to the RTMPS ingest when HA opens the connection.
-        This eliminates the race condition where HA tries to connect before
-        the camera has started streaming.
+        Uses the go2rtc add-on's direct-LAN WebRTC stream when enabled and the
+        add-on is reachable; otherwise falls back to the legacy RTMPS path.
+
+        In the RTMPS fallback, PUT_STREAMING is sent *before* returning the
+        URL so the camera is already pushing to the RTMPS ingest when HA
+        opens the connection. This eliminates the race condition where HA
+        tries to connect before the camera has started streaming.
         """
         if not self.is_on:
             return None
+
+        entry = self.coordinator.config_entry
+        if go2rtc.webrtc_enabled(entry):
+            host = go2rtc.go2rtc_host(entry)
+            session = async_get_clientsession(self.hass)
+            if await go2rtc.async_addon_reachable(session, host):
+                return go2rtc.ingest_url(host, self._camera.uid)
+            _LOGGER.warning("go2rtc add-on unreachable at %s; falling back to RTMPS", host)
 
         if not await self._async_start_streaming_safe():
             return None

@@ -877,7 +877,7 @@ async def test_stream_source_uses_go2rtc_when_enabled_and_reachable(hass) -> Non
         AsyncMock(return_value=True),
     ):
         url = await ent.stream_source()
-    assert url == "rtsp://hostx:18554/CAM1"
+    assert url == "webrtc:http://hostx:11984/api/webrtc?src=CAM1"
 
 
 async def test_stream_source_falls_back_to_rtmps_when_unreachable(hass) -> None:

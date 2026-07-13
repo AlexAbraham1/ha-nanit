@@ -41,7 +41,10 @@ def test_build_source_url_encodes() -> None:
 
 
 def test_ingest_url() -> None:
-    assert go2rtc.ingest_url("192.168.68.107", "CAM1") == "rtsp://192.168.68.107:18554/CAM1"
+    assert (
+        go2rtc.ingest_url("192.168.68.107", "CAM1")
+        == "webrtc:http://192.168.68.107:11984/api/webrtc?src=CAM1"
+    )
 
 
 async def test_async_push_stream_puts_correct_request() -> None:

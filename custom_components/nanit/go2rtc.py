@@ -18,7 +18,6 @@ from .const import (
     CONF_USE_GO2RTC,
     DEFAULT_GO2RTC_HOST,
     GO2RTC_API_PORT,
-    GO2RTC_RTSP_PORT,
     LOGGER,
 )
 
@@ -40,13 +39,15 @@ def build_source_url(camera_uid: str, access_token: str) -> str:
 
 
 def ingest_url(host: str, camera_uid: str) -> str:
-    """Return the URL HA's go2rtc ingests for this camera (RTSP from the add-on).
+    """Return the URL HA's built-in go2rtc ingests for this camera.
 
-    NOTE: if the OPUS audio track is dropped over RTSP (verified in the browser
-    end-to-end test), switch this to the go2rtc webrtc: form:
-    ``f"webrtc:http://{host}:{GO2RTC_API_PORT}/api/webrtc?src={camera_uid}"``.
+    Uses the go2rtc-to-go2rtc ``webrtc:`` transport (not RTSP). Verified on the
+    box: the add-on's RTSP server binds 127.0.0.1 only (unreachable across
+    containers) and RTSP dropped the media, whereas the ``webrtc:`` source pulls
+    H264 video + OPUS audio intact from the add-on. ``GO2RTC_RTSP_PORT`` is kept
+    for reference/diagnostics only.
     """
-    return f"rtsp://{host}:{GO2RTC_RTSP_PORT}/{camera_uid}"
+    return f"webrtc:http://{host}:{GO2RTC_API_PORT}/api/webrtc?src={camera_uid}"
 
 
 async def async_push_stream(

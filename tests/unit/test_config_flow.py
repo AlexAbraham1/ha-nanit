@@ -20,9 +20,13 @@ from custom_components.nanit import config_flow as nanit_config_flow
 from custom_components.nanit.const import (
     CONF_CAMERA_IP,
     CONF_CAMERA_IPS,
+    CONF_GO2RTC_HOST,
     CONF_MFA_CODE,
     CONF_REFRESH_TOKEN,
+    CONF_SPEAKER_IP,
+    CONF_SPEAKER_IPS,
     CONF_STORE_CREDENTIALS,
+    CONF_USE_GO2RTC,
     DOMAIN,
 )
 
@@ -807,5 +811,108 @@ async def test_options_flow_sets_go2rtc(hass) -> None:
         {CONF_USE_GO2RTC: True, CONF_GO2RTC_HOST: "192.168.68.107"},
     )
     assert result2["type"] == FlowResultType.CREATE_ENTRY
+    assert entry.options[CONF_USE_GO2RTC] is True
+    assert entry.options[CONF_GO2RTC_HOST] == "192.168.68.107"
+
+
+async def test_options_flow_camera_ip_sets_go2rtc_alongside_ips(
+    hass: HomeAssistant,
+) -> None:
+    """Submitting go2rtc values on the camera_ip step keeps camera/speaker IPs too."""
+    hass = await _resolve_hass(hass)
+    entry = MockConfigEntry(domain=DOMAIN, options={CONF_CAMERA_IPS: {}, CONF_SPEAKER_IPS: {}})
+    entry.runtime_data = SimpleNamespace(hub=SimpleNamespace(babies=[MOCK_BABY_1]))
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result.get("type") is FlowResultType.FORM
+    assert result.get("step_id") == "camera_ip"
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            CONF_CAMERA_IP: "192.168.1.50",
+            CONF_SPEAKER_IP: "192.168.1.51",
+            CONF_USE_GO2RTC: True,
+            CONF_GO2RTC_HOST: "192.168.68.200",
+        },
+    )
+
+    result_data = _as_dict(result)
+    assert result_data.get("type") is FlowResultType.CREATE_ENTRY
+    assert result_data["data"][CONF_CAMERA_IPS] == {MOCK_BABY_1.camera_uid: "192.168.1.50"}
+    assert result_data["data"][CONF_SPEAKER_IPS] == {MOCK_BABY_1.camera_uid: "192.168.1.51"}
+    assert result_data["data"][CONF_USE_GO2RTC] is True
+    assert result_data["data"][CONF_GO2RTC_HOST] == "192.168.68.200"
+
+
+async def test_options_flow_camera_ip_carries_through_existing_go2rtc(
+    hass: HomeAssistant,
+) -> None:
+    """Omitting go2rtc fields on the camera_ip step keeps prior go2rtc options intact."""
+    hass = await _resolve_hass(hass)
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        options={
+            CONF_CAMERA_IPS: {},
+            CONF_USE_GO2RTC: True,
+            CONF_GO2RTC_HOST: "existing-go2rtc-host",
+        },
+    )
+    entry.runtime_data = SimpleNamespace(hub=SimpleNamespace(babies=[MOCK_BABY_1]))
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result.get("type") is FlowResultType.FORM
+    assert result.get("step_id") == "camera_ip"
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {CONF_CAMERA_IP: "192.168.1.60"},
+    )
+
+    result_data = _as_dict(result)
+    assert result_data.get("type") is FlowResultType.CREATE_ENTRY
+    assert result_data["data"][CONF_CAMERA_IPS] == {MOCK_BABY_1.camera_uid: "192.168.1.60"}
+    assert result_data["data"][CONF_USE_GO2RTC] is True
+    assert result_data["data"][CONF_GO2RTC_HOST] == "existing-go2rtc-host"
+
+
+async def test_options_flow_no_hub_go2rtc_preserves_existing_camera_ips(
+    hass: HomeAssistant,
+) -> None:
+    """Regression: the no-hub go2rtc fallback must not wipe existing camera/speaker IPs.
+
+    HA's options manager REPLACES entry.options wholesale with whatever data
+    async_create_entry returns (it does not merge). If the no-hub branch in
+    async_step_init returns only the go2rtc keys, any existing
+    CONF_CAMERA_IPS/CONF_SPEAKER_IPS are silently dropped — e.g. when the
+    options flow is opened while the entry is mid-reload/setup-retry and the
+    hub isn't attached to runtime_data yet.
+    """
+    hass = await _resolve_hass(hass)
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        options={
+            CONF_CAMERA_IPS: {MOCK_BABY_1.camera_uid: "192.168.1.70"},
+            CONF_SPEAKER_IPS: {MOCK_BABY_1.camera_uid: "192.168.1.71"},
+        },
+    )
+    # No runtime_data set at all — simulates the hub not being available yet.
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result.get("type") is FlowResultType.FORM
+    assert result.get("step_id") == "init"
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {CONF_USE_GO2RTC: True, CONF_GO2RTC_HOST: "192.168.68.107"},
+    )
+
+    result_data = _as_dict(result)
+    assert result_data.get("type") is FlowResultType.CREATE_ENTRY
+    assert entry.options[CONF_CAMERA_IPS] == {MOCK_BABY_1.camera_uid: "192.168.1.70"}
+    assert entry.options[CONF_SPEAKER_IPS] == {MOCK_BABY_1.camera_uid: "192.168.1.71"}
     assert entry.options[CONF_USE_GO2RTC] is True
     assert entry.options[CONF_GO2RTC_HOST] == "192.168.68.107"

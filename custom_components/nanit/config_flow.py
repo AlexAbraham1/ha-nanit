@@ -366,7 +366,10 @@ class NanitOptionsFlow(OptionsFlow):
         if hub is None:
             # Hub not available (entry not set up yet) — go2rtc-only form.
             if user_input is not None:
-                return self.async_create_entry(title="", data=self._pop_go2rtc(user_input))
+                return self.async_create_entry(
+                    title="",
+                    data={**self.config_entry.options, **self._pop_go2rtc(user_input)},
+                )
             return self.async_show_form(
                 step_id="init",
                 data_schema=vol.Schema(self._go2rtc_schema_dict()),

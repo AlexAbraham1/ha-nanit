@@ -48,6 +48,7 @@ class NanitStartBreathingButton(NanitEntity, ButtonEntity):
     async def async_press(self) -> None:
         """Send PUT_STING_START to the camera."""
         try:
-            await self._camera.async_start_breathing_tracking()
+            # TODO(task 4): pass a real frame (from go2rtc) instead of no args.
+            await self._camera.async_start_breathing_tracking()  # type: ignore[call-arg]
         except BreathingStartError as err:
             raise HomeAssistantError(f"Could not start breathing monitoring: {err}") from err

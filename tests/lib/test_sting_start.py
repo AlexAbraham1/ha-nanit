@@ -78,11 +78,10 @@ def _wire_transport(cam: NanitCamera) -> list[bytes]:
 @pytest.mark.asyncio
 async def test_full_flow_sends_sting_start_with_midpoint() -> None:
     cam = _make_camera()
-    cam._session.get = AsyncMock(return_value=_resp(200, read=b"\xff\xd8jpeg"))
     cam._session.post = AsyncMock(return_value=_resp(200, json=_pattern_payload()))
     sent = _wire_transport(cam)
 
-    await cam.async_start_breathing_tracking()
+    await cam.async_start_breathing_tracking(b"\xff\xd8jpeg")
 
     # POST targeted the BMM endpoint with token-prefix auth + rgb status.
     args, kwargs = cam._session.post.call_args
@@ -106,7 +105,6 @@ async def test_full_flow_sends_sting_start_with_midpoint() -> None:
 @pytest.mark.asyncio
 async def test_raises_when_not_detected() -> None:
     cam = _make_camera()
-    cam._session.get = AsyncMock(return_value=_resp(200, read=b"jpeg"))
     cam._session.post = AsyncMock(return_value=_resp(200, json=_pattern_payload(detected=False)))
     cam._transport = MagicMock()
     cam._transport.connected = True
@@ -114,41 +112,28 @@ async def test_raises_when_not_detected() -> None:
     cam._transport.async_send = AsyncMock()
 
     with pytest.raises(BreathingStartError):
-        await cam.async_start_breathing_tracking()
+        await cam.async_start_breathing_tracking(b"jpeg")
     cam._transport.async_send.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_raises_when_no_frame() -> None:
-    cam = _make_camera()
-    cam._session.get = AsyncMock(return_value=_resp(500))  # snapshot -> None
-    cam._session.post = AsyncMock()
-
-    with pytest.raises(BreathingStartError):
-        await cam.async_start_breathing_tracking()
-    cam._session.post.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_raises_on_http_error() -> None:
     cam = _make_camera()
-    cam._session.get = AsyncMock(return_value=_resp(200, read=b"jpeg"))
     cam._session.post = AsyncMock(return_value=_resp(500, json={}))
 
     with pytest.raises(BreathingStartError):
-        await cam.async_start_breathing_tracking()
+        await cam.async_start_breathing_tracking(b"jpeg")
 
 
 @pytest.mark.asyncio
 async def test_raises_on_empty_objects() -> None:
     cam = _make_camera()
-    cam._session.get = AsyncMock(return_value=_resp(200, read=b"jpeg"))
     cam._session.post = AsyncMock(
         return_value=_resp(200, json={"bmm_sessions": {"detected": True, "data": {"objects": []}}})
     )
 
     with pytest.raises(BreathingStartError):
-        await cam.async_start_breathing_tracking()
+        await cam.async_start_breathing_tracking(b"jpeg")
 
 
 @pytest.mark.asyncio
@@ -198,12 +183,11 @@ async def test_raises_on_post_network_error() -> None:
 @pytest.mark.asyncio
 async def test_raises_when_camera_send_fails() -> None:
     cam = _make_camera()
-    cam._session.get = AsyncMock(return_value=_resp(200, read=b"jpeg"))
     cam._session.post = AsyncMock(return_value=_resp(200, json=_pattern_payload()))
     cam._send_request = AsyncMock(side_effect=NanitCameraUnavailable("camera offline"))
 
     with pytest.raises(BreathingStartError):
-        await cam.async_start_breathing_tracking()
+        await cam.async_start_breathing_tracking(b"jpeg")
 
 
 @pytest.mark.asyncio

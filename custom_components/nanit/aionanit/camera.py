@@ -469,25 +469,22 @@ class NanitCamera:
         self._update_state(playback=new_playback, kind=CameraEventKind.PLAYBACK_UPDATE)
         return new_playback
 
-    async def async_start_breathing_tracking(self) -> None:
-        """Start a Breathing Motion Monitoring ("STING") session.
+    async def async_start_breathing_tracking(self, frame: bytes) -> None:
+        """Start a Breathing Motion Monitoring ("STING") session from a still.
 
-        Mirrors the Nanit app's "start breathing tracking" action: grab a still
-        frame, ask the Nanit pattern API where the Breathing Wear band is, then
-        tell the camera to begin measuring at that location. The camera then
-        pushes PUT_STING_STATUS frames (bpm/alert) while the band is detected
-        and stops on its own when the baby leaves the crib — there is no stop
-        command (matches the app).
+        The caller supplies a JPEG ``frame`` (e.g. from the go2rtc add-on). This
+        asks the Nanit pattern API where the Breathing Wear band is, then tells
+        the camera to begin measuring at that location. The camera then pushes
+        PUT_STING_STATUS frames (bpm/alert) while the band is detected and stops
+        on its own when the baby leaves the crib — there is no stop command
+        (matches the app).
 
         Display/convenience only: the Nanit app remains the safety-critical
         breathing-alert path.
 
-        Raises BreathingStartError if a frame cannot be captured, the band is
-        not detected, or the camera is unreachable.
+        Raises BreathingStartError if the band is not detected or the camera is
+        unreachable.
         """
-        frame = await self.async_get_snapshot()
-        if frame is None:
-            raise BreathingStartError("could not capture a camera frame")
         win_location = await self._request_breathing_pattern(frame)
         sting_start = StingStart(
             win_location=win_location,

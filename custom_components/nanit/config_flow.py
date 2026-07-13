@@ -21,11 +21,14 @@ from .aionanit import NanitAuthError, NanitClient, NanitConnectionError, NanitMf
 from .const import (
     CONF_CAMERA_IP,
     CONF_CAMERA_IPS,
+    CONF_GO2RTC_HOST,
     CONF_MFA_CODE,
     CONF_REFRESH_TOKEN,
     CONF_SPEAKER_IP,
     CONF_SPEAKER_IPS,
     CONF_STORE_CREDENTIALS,
+    CONF_USE_GO2RTC,
+    DEFAULT_GO2RTC_HOST,
     DOMAIN,
     LOGGER,
 )
@@ -307,20 +310,68 @@ class NanitConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class NanitOptionsFlow(OptionsFlow):
-    """Handle Nanit options — configure camera IPs for local access.
+    """Handle Nanit options — camera IPs for local access + go2rtc streaming.
 
     Two-step flow:
     1. Select which camera to configure (if multiple exist)
-    2. Enter or clear the camera IP for local connectivity
+    2. Enter or clear the camera IP for local connectivity (this step also
+       carries the account-wide go2rtc WebRTC add-on toggle/host, since it's
+       reached in every hub-available case — single camera or after picking
+       one from a multi-camera list).
+
+    If the hub isn't available yet (e.g. the entry hasn't finished setting
+    up), "init" falls back to a go2rtc-only form so the toggle/host are
+    still reachable without depending on camera discovery.
     """
 
     def __init__(self) -> None:
         """Initialize."""
         self._selected_camera_uid: str = ""
 
+    def _go2rtc_schema_dict(self) -> dict[Any, Any]:
+        """Return the go2rtc toggle/host schema fields, defaulted from current options."""
+        opts = self.config_entry.options
+        return {
+            vol.Optional(
+                CONF_USE_GO2RTC,
+                default=opts.get(CONF_USE_GO2RTC, False),
+            ): cv.boolean,
+            vol.Optional(
+                CONF_GO2RTC_HOST,
+                default=opts.get(CONF_GO2RTC_HOST, DEFAULT_GO2RTC_HOST),
+            ): cv.string,
+        }
+
+    def _current_go2rtc(self) -> dict[str, Any]:
+        """Return the go2rtc options currently on the entry (for carry-through)."""
+        opts = self.config_entry.options
+        return {
+            CONF_USE_GO2RTC: opts.get(CONF_USE_GO2RTC, False),
+            CONF_GO2RTC_HOST: opts.get(CONF_GO2RTC_HOST, DEFAULT_GO2RTC_HOST),
+        }
+
+    def _pop_go2rtc(self, user_input: dict[str, Any]) -> dict[str, Any]:
+        """Extract go2rtc keys from submitted user_input, if present."""
+        data: dict[str, Any] = {}
+        if CONF_USE_GO2RTC in user_input:
+            data[CONF_USE_GO2RTC] = user_input[CONF_USE_GO2RTC]
+        if CONF_GO2RTC_HOST in user_input:
+            data[CONF_GO2RTC_HOST] = user_input[CONF_GO2RTC_HOST]
+        return data
+
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Select which camera to configure."""
-        hub = self.config_entry.runtime_data.hub
+        """Select which camera to configure, or manage go2rtc if no hub yet."""
+        hub = getattr(getattr(self.config_entry, "runtime_data", None), "hub", None)
+
+        if hub is None:
+            # Hub not available (entry not set up yet) — go2rtc-only form.
+            if user_input is not None:
+                return self.async_create_entry(title="", data=self._pop_go2rtc(user_input))
+            return self.async_show_form(
+                step_id="init",
+                data_schema=vol.Schema(self._go2rtc_schema_dict()),
+            )
+
         babies = hub.babies
 
         if not babies:
@@ -383,11 +434,15 @@ class NanitOptionsFlow(OptionsFlow):
                 else:
                     current_speaker_ips.pop(self._selected_camera_uid, None)
 
+                go2rtc_data = self._current_go2rtc()
+                go2rtc_data.update(self._pop_go2rtc(user_input))
+
                 return self.async_create_entry(
                     title="",
                     data={
                         CONF_CAMERA_IPS: current_ips,
                         CONF_SPEAKER_IPS: current_speaker_ips,
+                        **go2rtc_data,
                     },
                 )
 
@@ -405,20 +460,21 @@ class NanitOptionsFlow(OptionsFlow):
                 camera_name = display_name(baby.name, baby.uid)
                 break
 
+        schema: dict[Any, Any] = {
+            vol.Optional(
+                CONF_CAMERA_IP,
+                description={"suggested_value": current_ip},
+            ): cv.string,
+            vol.Optional(
+                CONF_SPEAKER_IP,
+                description={"suggested_value": current_speaker_ip},
+            ): cv.string,
+        }
+        schema.update(self._go2rtc_schema_dict())
+
         return self.async_show_form(
             step_id="camera_ip",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(
-                        CONF_CAMERA_IP,
-                        description={"suggested_value": current_ip},
-                    ): cv.string,
-                    vol.Optional(
-                        CONF_SPEAKER_IP,
-                        description={"suggested_value": current_speaker_ip},
-                    ): cv.string,
-                }
-            ),
+            data_schema=vol.Schema(schema),
             description_placeholders={"camera_name": camera_name},
             errors=errors,
         )

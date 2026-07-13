@@ -777,3 +777,35 @@ async def test_options_flow_camera_ip_clears_ip_when_empty(
     result_data = _as_dict(result)
     assert result_data.get("type") is FlowResultType.CREATE_ENTRY
     assert result_data["data"][CONF_CAMERA_IPS] == {}
+
+
+async def test_options_flow_sets_go2rtc(hass) -> None:
+    """The options flow stores the go2rtc toggle + host in entry.options."""
+    from homeassistant.const import CONF_ACCESS_TOKEN
+    from homeassistant.data_entry_flow import FlowResultType
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    from custom_components.nanit.const import (
+        CONF_GO2RTC_HOST,
+        CONF_REFRESH_TOKEN,
+        CONF_USE_GO2RTC,
+        DOMAIN,
+    )
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_ACCESS_TOKEN: "a", CONF_REFRESH_TOKEN: "r"},
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "init"
+
+    result2 = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {CONF_USE_GO2RTC: True, CONF_GO2RTC_HOST: "192.168.68.107"},
+    )
+    assert result2["type"] == FlowResultType.CREATE_ENTRY
+    assert entry.options[CONF_USE_GO2RTC] is True
+    assert entry.options[CONF_GO2RTC_HOST] == "192.168.68.107"

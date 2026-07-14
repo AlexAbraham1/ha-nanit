@@ -114,6 +114,38 @@ class TestBuildRequest:
         assert msg.request.sting_start.win_location.y == 20
         assert msg.request.sting_start.session_id == "s1"
 
+    def test_build_request_carries_sting_stop(self) -> None:
+        from custom_components.nanit.aionanit.proto import nanit_pb2
+        from custom_components.nanit.aionanit.proto.nanit_pb2 import RequestType
+        from custom_components.nanit.aionanit.ws.protocol import build_request
+
+        data = build_request(
+            7,
+            RequestType.PUT_STING_STOP,
+            sting_stop=nanit_pb2.StingStop(user_id="u1"),
+        )
+        msg = nanit_pb2.Message()
+        msg.ParseFromString(data)
+        assert msg.request.sting_stop.user_id == "u1"
+        assert msg.request.type == RequestType.PUT_STING_STOP
+
+
+class TestStingStatusFields:
+    def test_sting_status_has_corrected_fields(self) -> None:
+        from custom_components.nanit.aionanit.proto import nanit_pb2
+
+        s = nanit_pb2.StingStatus(breathing=2, mode=2, breaths_per_minute=41, server_connected=True)
+        assert s.breathing == 2
+        assert s.mode == 2
+        assert s.breaths_per_minute == 41
+        assert s.server_connected is True
+        # the old mislabeled field names must be gone
+        assert (
+            not hasattr(s, "is_alert")
+            or "is_alert" not in nanit_pb2.StingStatus.DESCRIPTOR.fields_by_name
+        )
+        assert "is_measuring" not in nanit_pb2.StingStatus.DESCRIPTOR.fields_by_name
+
 
 class TestExtractResponse:
     def test_returns_response_for_response_message(self) -> None:

@@ -235,26 +235,24 @@ message GetSettings {
   optional bool all = 1;
 }
 
-// Breathing Motion Monitoring ("STING") status, pushed by the camera as a
-// PUT_STING_STATUS request (~every 4-5s) while a breathing-tracking session is
-// active (Nanit Breathing Wear on the baby, tracking started in the app). The
-// camera computes breaths-per-minute on-device via computer vision and streams
-// it to any subscribed local websocket client.
-//
-// Field 10 (breaths_per_minute) and field 4 (is_alert) were confirmed by
-// capturing live frames and ground-truthing #10 against the app's displayed
-// value. Remaining fields are annotated with their observed meaning; unlabeled
-// wire fields (e.g. instantaneous signal floats at 18/19) are intentionally
-// omitted and ignored by the parser.
+// Field names from decompiling com.nanit.baby 4.6.1 (Square Wire, unobfuscated).
+// Earlier names (is_measuring/is_detected/is_alert) were WRONG: tag 4 is
+// server_connected (the camera<->breathing-server link, on for a whole healthy
+// session), NOT an alert. The real alert level is `mode` (tag 11, EStingMode).
 message StingStatus {
-  optional int32 state = 1;              // observed constant 2 while measuring
-  optional bool is_measuring = 2;        // inferred: 1 while a session is active
-  optional bool is_detected = 3;         // inferred: 1 while breathing is detected
-  optional bool is_alert = 4;            // red-alert flag; 0 = OK (confirmed)
-  optional int64 timestamp = 8;          // reading time (unix seconds)
-  optional string session = 9;           // "<camera_serial>_<session_start>"
-  optional int32 breaths_per_minute = 10;  // displayed BPM (confirmed vs app)
-  optional int64 session_start = 14;     // session start (unix seconds)
+  optional int32 state = 1;              // EState
+  optional int32 breathing = 2;          // EBreathing: 0 LACK_TEXTURE 1 NORMAL 2 WIGGLING 3 NO_PATTERN 4 NO_BREATHING 5 LOW_BPM 6 HIGH_BPM 7 INIT 8 PATTERN_FOUND 9 BABY_NOT_IN_BED
+  optional bool streaming_on = 3;
+  optional bool server_connected = 4;
+  optional int64 timestamp = 8;
+  optional string event_id = 9;
+  optional int32 breaths_per_minute = 10;  // confirmed vs app
+  optional int32 mode = 11;              // EStingMode: 0 GREEN 1 YELLOW 2 RED
+  optional int64 event_timestamp = 14;
+}
+
+message StingStop {
+  optional string user_id = 1;
 }
 
 message Request {
@@ -274,6 +272,7 @@ message Request {
   optional GetLogs get_logs = 18;
   optional StingStatus sting_status = 23;
   optional StingStart sting_start = 22;
+  optional StingStop sting_stop = 33;
 }
 
 message Response {

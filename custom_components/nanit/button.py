@@ -41,15 +41,17 @@ async def async_setup_entry(
     entities: list[ButtonEntity] = []
     for cam_data in entry.runtime_data.cameras.values():
         entities.append(NanitStartBreathingButton(cam_data.push_coordinator, cam_data.camera))
+        entities.append(NanitStopBreathingButton(cam_data.push_coordinator, cam_data.camera))
     async_add_entities(entities)
 
 
 class NanitStartBreathingButton(NanitEntity, ButtonEntity):
     """Start a Breathing Motion Monitoring session (mirrors the app's start).
 
-    One-shot: the camera stops tracking on its own when the baby leaves the
-    crib, so there is no stop button. Display/convenience only — the Nanit app
-    remains the safety-critical breathing-alert path.
+    The camera also stops tracking on its own when the baby leaves the crib,
+    or it can be stopped early via ``NanitStopBreathingButton``. Display/
+    convenience only — the Nanit app remains the safety-critical
+    breathing-alert path.
     """
 
     _attr_translation_key = "start_breathing_tracking"
@@ -84,3 +86,27 @@ class NanitStartBreathingButton(NanitEntity, ButtonEntity):
             await self._camera.async_start_breathing_tracking(png)
         except BreathingStartError as err:
             raise HomeAssistantError(f"Could not start breathing monitoring: {err}") from err
+
+
+class NanitStopBreathingButton(NanitEntity, ButtonEntity):
+    """Stop the active Breathing Motion Monitoring session (mirrors the app's Stop).
+
+    Sends PUT_STING_STOP. Display/convenience only — the Nanit app remains the
+    safety-critical breathing-alert path.
+    """
+
+    _attr_translation_key = "stop_breathing_tracking"
+    _attr_icon = "mdi:lungs"
+
+    def __init__(self, coordinator: NanitPushCoordinator, camera: NanitCamera) -> None:
+        """Initialize."""
+        super().__init__(coordinator)
+        self._camera = camera
+        self._attr_unique_id = f"{camera.uid}_stop_breathing_tracking"
+
+    async def async_press(self) -> None:
+        """Send PUT_STING_STOP."""
+        try:
+            await self._camera.async_stop_breathing_tracking()
+        except BreathingStartError as err:
+            raise HomeAssistantError(f"Could not stop breathing monitoring: {err}") from err

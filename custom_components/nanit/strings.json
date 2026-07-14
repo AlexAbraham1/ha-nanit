@@ -157,7 +157,8 @@
       "camera_lite": { "name": "Lite" }
     },
     "button": {
-      "start_breathing_tracking": { "name": "Start breathing tracking" }
+      "start_breathing_tracking": { "name": "Start breathing tracking" },
+      "stop_breathing_tracking": { "name": "Stop breathing tracking" }
     }
   }
 }

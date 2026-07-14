@@ -328,4 +328,4 @@ class TestEntityRegistration:
     ) -> None:
         entities = await _setup_and_capture(button_platform, cam_data_factory())
         assert _serialize_entities(entities) == snapshot
-        assert len(entities) == 1
+        assert len(entities) == 2

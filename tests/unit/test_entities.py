@@ -48,7 +48,10 @@ from custom_components.nanit.binary_sensor import (
     NanitBreathingTrackingBinarySensor,
     NanitCloudBinarySensor,
 )
-from custom_components.nanit.button import NanitStartBreathingButton
+from custom_components.nanit.button import (
+    NanitStartBreathingButton,
+    NanitStopBreathingButton,
+)
 from custom_components.nanit.camera import NanitCameraEntity
 from custom_components.nanit.const import CLOUD_EVENT_WINDOW
 from custom_components.nanit.coordinator import (
@@ -1003,6 +1006,37 @@ async def test_start_breathing_button_errors_when_conversion_fails(hass) -> None
         with pytest.raises(HomeAssistantError):
             await button.async_press()
     camera.async_start_breathing_tracking.assert_not_called()
+
+
+async def test_stop_button_sends_stop_command(hass) -> None:
+    """Press calls camera.async_stop_breathing_tracking() directly (no frame needed)."""
+    coordinator = _push_coordinator(_camera_state())
+    camera = MagicMock()
+    camera.uid = "cam_uid_1"
+    camera.async_stop_breathing_tracking = AsyncMock()
+    button = NanitStopBreathingButton(coordinator, camera)
+    button.hass = hass
+
+    await button.async_press()
+
+    camera.async_stop_breathing_tracking.assert_awaited_once()
+
+
+async def test_stop_button_surfaces_transport_error_as_ha_error(hass) -> None:
+    """A BreathingStartError from the camera surfaces as HomeAssistantError."""
+    from custom_components.nanit.aionanit.exceptions import BreathingStartError
+
+    coordinator = _push_coordinator(_camera_state())
+    camera = MagicMock()
+    camera.uid = "cam_uid_1"
+    camera.async_stop_breathing_tracking = AsyncMock(
+        side_effect=BreathingStartError("camera unreachable")
+    )
+    button = NanitStopBreathingButton(coordinator, camera)
+    button.hass = hass
+
+    with pytest.raises(HomeAssistantError):
+        await button.async_press()
 
 
 async def test_stream_source_uses_go2rtc_when_enabled_and_reachable(hass) -> None:

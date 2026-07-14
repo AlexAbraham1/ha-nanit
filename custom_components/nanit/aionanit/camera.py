@@ -54,6 +54,7 @@ from .proto import (
     ControlSensorDataTransfer,
     Point,
     StingStart,
+    StingStop,
     StreamingStatus,
 )
 from .proto import nanit_pb2 as proto
@@ -479,8 +480,8 @@ class NanitCamera:
         the Breathing Wear band is, then tells the camera to begin measuring
         at that location. The camera then pushes
         PUT_STING_STATUS frames (bpm/alert) while the band is detected and stops
-        on its own when the baby leaves the crib — there is no stop command
-        (matches the app).
+        on its own when the baby leaves the crib. It can also be stopped early
+        via ``async_stop_breathing_tracking`` (matches the app's Stop button).
 
         Display/convenience only: the Nanit app remains the safety-critical
         breathing-alert path.
@@ -500,6 +501,23 @@ class NanitCamera:
         except (NanitRequestTimeout, NanitTransportError, NanitCameraUnavailable) as err:
             raise BreathingStartError(
                 f"could not send the start command to the camera: {err}"
+            ) from err
+
+    async def async_stop_breathing_tracking(self) -> None:
+        """Stop the active Breathing Motion Monitoring session (app's Stop).
+
+        Sends PUT_STING_STOP. ``user_id`` is informational (the app records who
+        stopped it); the camera stops the session regardless, so an empty string
+        is fine. Convenience mirror of the app — the Nanit app remains the
+        safety-critical breathing path.
+
+        Raises BreathingStartError if the camera is unreachable.
+        """
+        try:
+            await self._send_request(RequestType.PUT_STING_STOP, sting_stop=StingStop(user_id=""))
+        except (NanitRequestTimeout, NanitTransportError, NanitCameraUnavailable) as err:
+            raise BreathingStartError(
+                f"could not send the stop command to the camera: {err}"
             ) from err
 
     async def _request_breathing_pattern(self, frame: bytes) -> Point:

@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, IntEnum
 
+STING_MODE_RED = 2
+
 
 class TransportKind(Enum):
     LOCAL = "local"
@@ -100,10 +102,16 @@ class BreathingState:
     """
 
     breaths_per_minute: int | None = None
-    is_alert: bool = False
-    is_measuring: bool = False
-    is_detected: bool = False
+    mode: int | None = None
+    breathing: int | None = None
     received_at: float | None = None
+
+    @property
+    def is_alert(self) -> bool:
+        """The app's RED level (EStingMode==2). Display-only — the Nanit app
+        remains the safety-critical alerting path; this is a convenience mirror.
+        """
+        return self.mode == STING_MODE_RED
 
 
 @dataclass(frozen=True)

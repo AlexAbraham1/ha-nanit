@@ -212,8 +212,7 @@ def _parse_sting_status(request: object) -> BreathingState | None:
     sting = request.sting_status
     return BreathingState(
         breaths_per_minute=sting.breaths_per_minute or None,
-        is_alert=bool(sting.is_alert),
-        is_measuring=bool(sting.is_measuring),
-        is_detected=bool(sting.is_detected),
+        mode=sting.mode,
+        breathing=sting.breathing,
         received_at=time.time(),
     )

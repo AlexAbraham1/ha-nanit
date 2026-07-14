@@ -246,15 +246,13 @@ def _breathing_state(
     *,
     breaths_per_minute: int | None = 43,
     is_alert: bool = False,
-    is_measuring: bool = True,
     age_seconds: float = 0.0,
 ) -> CameraState:
     return replace(
         _camera_state(),
         breathing=BreathingState(
             breaths_per_minute=breaths_per_minute,
-            is_alert=is_alert,
-            is_measuring=is_measuring,
+            mode=2 if is_alert else 0,  # EStingMode RED == 2, GREEN == 0
             received_at=time.time() - age_seconds,
         ),
     )
@@ -298,10 +296,8 @@ def test_breathing_alert_reflects_flag_and_freshness() -> None:
 
 def test_breathing_tracking_binary_sensor_on_iff_fresh_and_measuring() -> None:
     """binary_sensor.breathing_tracking is ON iff a fresh session is measuring."""
-    on = NanitBreathingTrackingBinarySensor(_push_coordinator(_breathing_state(is_measuring=True)))
-    stale = NanitBreathingTrackingBinarySensor(
-        _push_coordinator(_breathing_state(is_measuring=True, age_seconds=999))
-    )
+    on = NanitBreathingTrackingBinarySensor(_push_coordinator(_breathing_state()))
+    stale = NanitBreathingTrackingBinarySensor(_push_coordinator(_breathing_state(age_seconds=999)))
 
     assert on.is_on is True
     assert stale.available is True

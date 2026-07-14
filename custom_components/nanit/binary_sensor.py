@@ -200,13 +200,16 @@ class NanitBreathingTrackingBinarySensor(NanitEntity, BinarySensorEntity):
 
     @property
     def is_on(self) -> bool | None:
-        """Return True while a fresh breathing session is measuring."""
+        """Return True while a fresh breathing session is measuring.
+
+        The camera only pushes STING frames while a tracking session is
+        active, so a fresh reading (see ``breathing_is_fresh``) already means
+        a session is running — there is no separate "measuring" flag on the
+        corrected wire schema.
+        """
         if self.coordinator.data is None:
             return None
-        return (
-            breathing_is_fresh(self.coordinator.data)
-            and self.coordinator.data.breathing.is_measuring
-        )
+        return breathing_is_fresh(self.coordinator.data)
 
 
 class NanitCloudBinarySensor(NanitCloudEntity, BinarySensorEntity):

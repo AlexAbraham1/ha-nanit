@@ -234,6 +234,13 @@ class NanitHub:
                     host,
                     type(err).__name__,
                 )
+                continue
+            if go2rtc.lite_enabled(self._entry):
+                # After the main push, never before: the lite source resolves the
+                # 1080p stream by name, so it has to exist first. This call logs
+                # and swallows its own failures — the companion stream must never
+                # take down the real camera.
+                await go2rtc.async_push_lite_stream(session, host, camera_uid)
 
     async def _setup_camera(
         self,

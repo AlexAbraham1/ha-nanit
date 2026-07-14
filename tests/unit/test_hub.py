@@ -409,10 +409,17 @@ async def test_go2rtc_push_failure_is_isolated_and_token_never_logged(
 
 
 async def test_push_go2rtc_streams_pushes_lite_when_enabled(hass, mock_nanit_client) -> None:
-    """With the lite option on, each camera gets its companion stream too."""
+    """With the lite option on, every camera whose main push succeeds gets its
+    companion stream too — proven with two cameras so a batched "collect
+    successes, then push all lites" implementation can't masquerade as the
+    correct per-camera loop.
+    """
     from unittest.mock import AsyncMock, patch
 
     from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
+
+    mock_nanit_client.async_get_babies.return_value = [MOCK_BABY_1, MOCK_BABY_2]
+    mock_nanit_client.camera.side_effect = lambda **kw: _make_mock_camera(kw["uid"], kw["baby_uid"])
 
     entry = _make_entry(hass, options={CONF_USE_GO2RTC: True, CONF_GO2RTC_HOST: "hostx"})
     hub = NanitHub(hass, MagicMock(), entry)
@@ -438,8 +445,12 @@ async def test_push_go2rtc_streams_pushes_lite_when_enabled(hass, mock_nanit_cli
 
     push.assert_awaited()
     push_lite.assert_awaited()
-    # The lite source resolves the parent stream by name, so the parent must exist first.
-    assert push.await_count == push_lite.await_count
+    # Assert on the actual camera_uid each mock was called with, not just counts:
+    # both cameras' main pushes succeeded, so both must get their lite companion.
+    pushed_uids = {c.args[2] for c in push.await_args_list}
+    lite_pushed_uids = {c.args[2] for c in push_lite.await_args_list}
+    assert pushed_uids == {MOCK_BABY_1.camera_uid, MOCK_BABY_2.camera_uid}
+    assert lite_pushed_uids == {MOCK_BABY_1.camera_uid, MOCK_BABY_2.camera_uid}
 
 
 async def test_push_go2rtc_streams_skips_lite_when_disabled(hass, mock_nanit_client) -> None:
@@ -475,10 +486,21 @@ async def test_push_go2rtc_streams_skips_lite_when_disabled(hass, mock_nanit_cli
 async def test_push_go2rtc_streams_skips_lite_when_main_push_failed(
     hass, mock_nanit_client
 ) -> None:
-    """No point pushing a transcode of a stream that isn't there."""
+    """No point pushing a transcode of a stream that isn't there.
+
+    Uses the two-baby fixture so this proves the *mixed* case that actually
+    matters: camera A's main push fails so its lite push must be skipped,
+    while camera B's main push succeeds so its lite push must still fire. A
+    single-camera all-fail fixture would only prove the trivial case and would
+    also pass under a wrong implementation that short-circuits the whole loop
+    on any failure.
+    """
     from unittest.mock import AsyncMock, patch
 
     from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
+
+    mock_nanit_client.async_get_babies.return_value = [MOCK_BABY_1, MOCK_BABY_2]
+    mock_nanit_client.camera.side_effect = lambda **kw: _make_mock_camera(kw["uid"], kw["baby_uid"])
 
     entry = _make_entry(hass, options={CONF_USE_GO2RTC: True, CONF_GO2RTC_HOST: "hostx"})
     hub = NanitHub(hass, MagicMock(), entry)
@@ -493,10 +515,14 @@ async def test_push_go2rtc_streams_skips_lite_when_main_push_failed(
         net_cls.return_value = MagicMock(async_config_entry_first_refresh=AsyncMock())
         await hub.async_setup()
 
+    async def push_side_effect(_session, _host, camera_uid, _access_token):
+        if camera_uid == MOCK_BABY_1.camera_uid:
+            raise RuntimeError(f"go2rtc push failed for {camera_uid} (status 500)")
+
     with (
         patch(
             "custom_components.nanit.hub.go2rtc.async_push_stream",
-            AsyncMock(side_effect=RuntimeError("go2rtc push failed for cam_1 (status 500)")),
+            AsyncMock(side_effect=push_side_effect),
         ),
         patch("custom_components.nanit.hub.go2rtc.lite_enabled", return_value=True),
         patch(
@@ -505,7 +531,14 @@ async def test_push_go2rtc_streams_skips_lite_when_main_push_failed(
     ):
         await hub._async_push_go2rtc_streams("TOKEN")
 
-    push_lite.assert_not_awaited()
+    # Assert on the actual call args, not just counts: the surviving camera
+    # (BABY_2) must still get its lite push, while the failed one (BABY_1)
+    # must not — proving the per-camera coupling rather than an all-or-nothing
+    # or batched-second-pass behavior.
+    lite_pushed_uids = {c.args[2] for c in push_lite.await_args_list}
+    assert lite_pushed_uids == {MOCK_BABY_2.camera_uid}
+    assert MOCK_BABY_1.camera_uid not in lite_pushed_uids
+    push_lite.assert_awaited_once()
 
 
 async def test_token_refresh_pushes_go2rtc(hass, mock_nanit_client) -> None:

@@ -170,8 +170,14 @@ async def async_push_lite_stream(
     resolves the parent 1080p stream by name, so the parent must already exist.
 
     Unlike ``async_push_stream``, neither the request URL nor the source carries
-    an access token, so the underlying exception is safe to log — but a failure
-    here must never take down the 1080p camera, so it is logged and swallowed.
+    an access token, so the underlying exception is safe to log in full — there
+    is nothing to sanitize. A failure here must never take down the 1080p
+    camera, so *any* exception (not just the expected network ones) is caught,
+    logged, and swallowed: the call site in ``hub.py`` sits outside its own
+    ``try`` (it runs after the main push's ``continue``), so anything that
+    escapes here — including a stray ``RuntimeError("Session is closed")`` from
+    aiohttp, or a future bug in these helpers — would otherwise fail the whole
+    config entry and leave the user with no cameras at all.
     """
     url = f"http://{host}:{GO2RTC_API_PORT}/api/streams"
     params = {"name": lite_stream_name(camera_uid), "src": build_lite_source_url(camera_uid)}
@@ -179,7 +185,7 @@ async def async_push_lite_stream(
         async with asyncio.timeout(5):
             async with session.put(url, params=params) as resp:
                 resp.raise_for_status()
-    except (TimeoutError, aiohttp.ClientError, OSError) as err:
+    except Exception as err:  # noqa: BLE001 - deliberately broad, see docstring
         LOGGER.warning("Failed to push go2rtc lite stream for %s: %s", camera_uid, err)
         return
     LOGGER.debug("Pushed go2rtc lite stream for camera %s via %s", camera_uid, host)

@@ -9,6 +9,7 @@ from datetime import datetime
 
 from homeassistant.components.camera import Camera, CameraEntityFeature
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -221,7 +222,7 @@ class NanitCameraEntity(NanitEntity, Camera):
         try:
             image = await go2rtc.async_get_frame(session, host, self._stream_name)
         except Exception:  # noqa: BLE001
-            _LOGGER.debug("Failed to fetch snapshot for %s", self._camera.uid)
+            _LOGGER.debug("Failed to fetch snapshot for %s", self._stream_name)
             return None
         self._cached_snapshot = image
         self._cached_snapshot_at = time.monotonic()
@@ -285,3 +286,28 @@ class NanitLiteCameraEntity(NanitCameraEntity):
             return None
 
         return go2rtc.lite_ingest_url(host, self._camera.uid)
+
+    # ------------------------------------------------------------------
+    # On/off — this entity is a display-only view of the shared physical
+    # camera and must never be able to put it to sleep. HA's camera
+    # component registers camera.turn_on/turn_off with no required_features
+    # gate, so not advertising CameraEntityFeature.ON_OFF only hides the UI
+    # control — the service still reaches these methods. Override both to
+    # refuse rather than fall through to NanitCameraEntity's implementation.
+    # ------------------------------------------------------------------
+
+    async def async_turn_on(self) -> None:
+        """Refuse — power control belongs on the main camera entity."""
+        raise HomeAssistantError(
+            "This is a display-only downscaled view of the main camera and cannot "
+            "be turned on/off independently. Use the main camera entity to control "
+            "power/sleep mode."
+        )
+
+    async def async_turn_off(self) -> None:
+        """Refuse — power control belongs on the main camera entity."""
+        raise HomeAssistantError(
+            "This is a display-only downscaled view of the main camera and cannot "
+            "be turned on/off independently. Use the main camera entity to control "
+            "power/sleep mode."
+        )

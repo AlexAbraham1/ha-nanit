@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from homeassistant.components.media_player import MediaPlayerState
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 _ = sys.modules.setdefault("turbojpeg", MagicMock(TurboJPEG=MagicMock()))
@@ -1213,3 +1214,51 @@ async def test_lite_camera_snapshot_uses_lite_stream_name(hass) -> None:
     ) as get_frame:
         assert await entity.async_camera_image() == b"JPEG"
     assert get_frame.await_args.args[2] == "CAM1_lite"
+
+
+async def test_lite_camera_turn_on_refuses_and_leaves_physical_camera_alone(hass) -> None:
+    """A camera.turn_on targeting the lite entity must not wake the real camera.
+
+    HA's camera component registers camera.turn_on/turn_off with no
+    required_features gate, so not advertising CameraEntityFeature.ON_OFF only
+    hides the UI control — the service call still reaches async_turn_on/off.
+    The lite entity is display-only and must refuse instead of falling through
+    to NanitCameraEntity's inherited implementation, which touches the shared
+    physical camera.
+    """
+    from custom_components.nanit.camera import NanitLiteCameraEntity
+
+    coordinator = MagicMock()
+    coordinator.data = None
+    camera = MagicMock()
+    camera.uid = "CAM1"
+    camera.async_set_settings = AsyncMock()
+    camera.async_stop_streaming = AsyncMock()
+
+    entity = NanitLiteCameraEntity(coordinator, camera)
+    entity.hass = hass
+
+    with pytest.raises(HomeAssistantError):
+        await entity.async_turn_on()
+    camera.async_set_settings.assert_not_awaited()
+    camera.async_stop_streaming.assert_not_awaited()
+
+
+async def test_lite_camera_turn_off_refuses_and_leaves_physical_camera_alone(hass) -> None:
+    """A camera.turn_off targeting the lite entity must not sleep the real camera."""
+    from custom_components.nanit.camera import NanitLiteCameraEntity
+
+    coordinator = MagicMock()
+    coordinator.data = None
+    camera = MagicMock()
+    camera.uid = "CAM1"
+    camera.async_set_settings = AsyncMock()
+    camera.async_stop_streaming = AsyncMock()
+
+    entity = NanitLiteCameraEntity(coordinator, camera)
+    entity.hass = hass
+
+    with pytest.raises(HomeAssistantError):
+        await entity.async_turn_off()
+    camera.async_set_settings.assert_not_awaited()
+    camera.async_stop_streaming.assert_not_awaited()

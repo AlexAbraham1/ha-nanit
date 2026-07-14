@@ -274,3 +274,19 @@ async def test_async_push_lite_stream_swallows_failure() -> None:
 
     # Returns normally — no exception propagates.
     assert await go2rtc.async_push_lite_stream(session, "hostx", "CAM1") is None
+
+
+async def test_async_push_lite_stream_swallows_non_network_exception() -> None:
+    """Even a non-network exception (e.g. aiohttp's "Session is closed"
+    RuntimeError) must not propagate — the call site in hub.py sits outside
+    its own try/except, so anything escaping here fails the whole config
+    entry and leaves the user with no cameras at all.
+    """
+    ctx = MagicMock()
+    ctx.__aenter__ = AsyncMock(side_effect=RuntimeError("Session is closed"))
+    ctx.__aexit__ = AsyncMock(return_value=False)
+    session = MagicMock()
+    session.put = MagicMock(return_value=ctx)
+
+    # Returns normally — no exception propagates.
+    assert await go2rtc.async_push_lite_stream(session, "hostx", "CAM1") is None

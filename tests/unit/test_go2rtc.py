@@ -213,3 +213,64 @@ async def test_async_get_frame_retries_then_succeeds() -> None:
 
     assert out == b"\xff\xd8jpegbytes"
     assert session.get.call_count == 2
+
+
+def test_lite_enabled_reads_options() -> None:
+    from custom_components.nanit.const import CONF_LITE_CAMERA
+
+    assert go2rtc.lite_enabled(SimpleNamespace(options={CONF_LITE_CAMERA: True})) is True
+    assert go2rtc.lite_enabled(SimpleNamespace(options={})) is False
+
+
+def test_lite_stream_name() -> None:
+    assert go2rtc.lite_stream_name("CAM1") == "CAM1_lite"
+
+
+def test_build_lite_source_url_transcodes_and_copies_audio() -> None:
+    src = go2rtc.build_lite_source_url("CAM1")
+    # Reads the parent 1080p stream by name — so the camera is opened only once,
+    # and the source carries no access token.
+    assert src.startswith("ffmpeg:CAM1#")
+    assert "#video=h264" in src
+    assert "#width=640" in src
+    assert "#height=360" in src
+    # Mandatory: go2rtc's ffmpeg source drops audio unless asked for.
+    assert "#audio=copy" in src
+    assert "access_token" not in src
+
+
+def test_lite_ingest_url() -> None:
+    assert (
+        go2rtc.lite_ingest_url("192.168.68.107", "CAM1")
+        == "webrtc:http://192.168.68.107:11984/api/webrtc?src=CAM1_lite"
+    )
+
+
+async def test_async_push_lite_stream_puts_correct_request() -> None:
+    resp = MagicMock()
+    resp.raise_for_status = MagicMock()
+    ctx = MagicMock()
+    ctx.__aenter__ = AsyncMock(return_value=resp)
+    ctx.__aexit__ = AsyncMock(return_value=False)
+    session = MagicMock()
+    session.put = MagicMock(return_value=ctx)
+
+    await go2rtc.async_push_lite_stream(session, "hostx", "CAM1")
+
+    args, kwargs = session.put.call_args
+    assert args[0] == "http://hostx:11984/api/streams"
+    assert kwargs["params"]["name"] == "CAM1_lite"
+    assert kwargs["params"]["src"] == go2rtc.build_lite_source_url("CAM1")
+    resp.raise_for_status.assert_called_once()
+
+
+async def test_async_push_lite_stream_swallows_failure() -> None:
+    """A lite-stream failure must never take down the 1080p camera."""
+    ctx = MagicMock()
+    ctx.__aenter__ = AsyncMock(side_effect=aiohttp.ClientError("boom"))
+    ctx.__aexit__ = AsyncMock(return_value=False)
+    session = MagicMock()
+    session.put = MagicMock(return_value=ctx)
+
+    # Returns normally — no exception propagates.
+    assert await go2rtc.async_push_lite_stream(session, "hostx", "CAM1") is None

@@ -68,3 +68,14 @@ CONF_GO2RTC_HOST = "go2rtc_host"
 GO2RTC_API_PORT = 11984
 GO2RTC_RTSP_PORT = 18554
 DEFAULT_GO2RTC_HOST = "homeassistant.local"
+
+# Downscaled companion stream for low-power displays (e.g. an old kiosk tablet
+# that cannot decode 1080p). This is a go2rtc `ffmpeg:` source that reads the
+# camera's *existing* 1080p stream by name, so the camera is still opened only
+# once and the transcode runs only while someone is watching the lite stream.
+# `#audio=copy` is mandatory: go2rtc's ffmpeg source drops audio unless asked,
+# and the source OPUS is passed through untouched.
+CONF_LITE_CAMERA = "lite_camera"
+GO2RTC_LITE_SOURCE_TEMPLATE = (
+    "ffmpeg:{camera_uid}#video=h264#width=640#height=360#hardware=vaapi#audio=copy"
+)

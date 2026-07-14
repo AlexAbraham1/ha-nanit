@@ -1094,3 +1094,122 @@ async def test_fetch_snapshot_none_on_fetch_error(hass) -> None:
         AsyncMock(side_effect=RuntimeError("down")),
     ):
         assert await ent._async_fetch_snapshot() is None
+
+
+async def test_lite_camera_absent_when_option_off(hass) -> None:
+    """The companion camera must not exist unless it was asked for."""
+    from custom_components.nanit import camera as camera_platform
+    from custom_components.nanit.const import CONF_LITE_CAMERA, CONF_USE_GO2RTC
+
+    cam_data = MagicMock(
+        push_coordinator=_push_coordinator(_camera_state()),
+        camera=MagicMock(uid="cam_1"),
+    )
+    entry = MagicMock(
+        options={CONF_USE_GO2RTC: True, CONF_LITE_CAMERA: False},
+        runtime_data=MagicMock(cameras={"cam_1": cam_data}),
+    )
+    async_add_entities = MagicMock()
+
+    await camera_platform.async_setup_entry(hass, entry, async_add_entities)
+
+    added = async_add_entities.call_args.args[0]
+    entities = list(added)
+    assert len(entities) == 1
+    assert isinstance(entities[0], camera_platform.NanitCameraEntity)
+    assert not isinstance(entities[0], camera_platform.NanitLiteCameraEntity)
+
+
+async def test_lite_camera_created_when_option_on(hass) -> None:
+    from custom_components.nanit import camera as camera_platform
+    from custom_components.nanit.const import CONF_LITE_CAMERA, CONF_USE_GO2RTC
+
+    cam_data = MagicMock(
+        push_coordinator=_push_coordinator(_camera_state()),
+        camera=MagicMock(uid="cam_1"),
+    )
+    entry = MagicMock(
+        options={CONF_USE_GO2RTC: True, CONF_LITE_CAMERA: True},
+        runtime_data=MagicMock(cameras={"cam_1": cam_data}),
+    )
+    async_add_entities = MagicMock()
+
+    await camera_platform.async_setup_entry(hass, entry, async_add_entities)
+
+    added = async_add_entities.call_args.args[0]
+    entities = list(added)
+    assert len(entities) == 2
+    assert any(isinstance(e, camera_platform.NanitLiteCameraEntity) for e in entities)
+
+
+async def test_lite_camera_stream_source_is_lite_ingest(hass) -> None:
+    from custom_components.nanit.camera import NanitLiteCameraEntity
+    from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
+
+    coordinator = MagicMock()
+    coordinator.config_entry.options = {
+        CONF_USE_GO2RTC: True,
+        CONF_GO2RTC_HOST: "192.168.68.107",
+    }
+    coordinator.data = None  # is_on defaults True
+    camera = MagicMock()
+    camera.uid = "CAM1"
+
+    entity = NanitLiteCameraEntity(coordinator, camera)
+    entity.hass = hass
+    with patch(
+        "custom_components.nanit.camera.go2rtc.async_addon_reachable",
+        AsyncMock(return_value=True),
+    ):
+        assert (
+            await entity.stream_source()
+            == "webrtc:http://192.168.68.107:11984/api/webrtc?src=CAM1_lite"
+        )
+
+
+async def test_lite_camera_no_rtmps_fallback(hass) -> None:
+    """The lite stream lives only in the add-on — unreachable means None, never RTMPS."""
+    from custom_components.nanit.camera import NanitLiteCameraEntity
+    from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
+
+    coordinator = MagicMock()
+    coordinator.config_entry.options = {
+        CONF_USE_GO2RTC: True,
+        CONF_GO2RTC_HOST: "192.168.68.107",
+    }
+    coordinator.data = None
+    camera = MagicMock()
+    camera.uid = "CAM1"
+    camera.async_start_streaming = AsyncMock()
+
+    entity = NanitLiteCameraEntity(coordinator, camera)
+    entity.hass = hass
+    with patch(
+        "custom_components.nanit.camera.go2rtc.async_addon_reachable",
+        AsyncMock(return_value=False),
+    ):
+        assert await entity.stream_source() is None
+    camera.async_start_streaming.assert_not_awaited()
+
+
+async def test_lite_camera_snapshot_uses_lite_stream_name(hass) -> None:
+    from custom_components.nanit.camera import NanitLiteCameraEntity
+    from custom_components.nanit.const import CONF_GO2RTC_HOST, CONF_USE_GO2RTC
+
+    coordinator = MagicMock()
+    coordinator.config_entry.options = {
+        CONF_USE_GO2RTC: True,
+        CONF_GO2RTC_HOST: "192.168.68.107",
+    }
+    coordinator.data = None
+    camera = MagicMock()
+    camera.uid = "CAM1"
+
+    entity = NanitLiteCameraEntity(coordinator, camera)
+    entity.hass = hass
+    with patch(
+        "custom_components.nanit.camera.go2rtc.async_get_frame",
+        AsyncMock(return_value=b"JPEG"),
+    ) as get_frame:
+        assert await entity.async_camera_image() == b"JPEG"
+    assert get_frame.await_args.args[2] == "CAM1_lite"

@@ -213,7 +213,7 @@ def _full_cam_data() -> MagicMock:
 
 
 def _mock_entry(cam_data: MagicMock) -> MagicMock:
-    return MagicMock(runtime_data=MagicMock(cameras={"cam_1": cam_data}))
+    return MagicMock(options={}, runtime_data=MagicMock(cameras={"cam_1": cam_data}))
 
 
 # ---------------------------------------------------------------------------

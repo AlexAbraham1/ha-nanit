@@ -33,10 +33,13 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Nanit camera entities for all cameras on the account."""
-    async_add_entities(
-        NanitCameraEntity(cam_data.push_coordinator, cam_data.camera)
-        for cam_data in entry.runtime_data.cameras.values()
-    )
+    lite = go2rtc.webrtc_enabled(entry) and go2rtc.lite_enabled(entry)
+    entities: list[Camera] = []
+    for cam_data in entry.runtime_data.cameras.values():
+        entities.append(NanitCameraEntity(cam_data.push_coordinator, cam_data.camera))
+        if lite:
+            entities.append(NanitLiteCameraEntity(cam_data.push_coordinator, cam_data.camera))
+    async_add_entities(entities)
 
 
 class NanitCameraEntity(NanitEntity, Camera):
@@ -60,6 +63,11 @@ class NanitCameraEntity(NanitEntity, Camera):
         self._attr_unique_id = f"{camera.uid}_camera"
         self._cached_snapshot: bytes | None = None
         self._cached_snapshot_at: float = 0.0
+
+    @property
+    def _stream_name(self) -> str:
+        """The go2rtc stream this entity reads. Overridden by the lite camera."""
+        return self._camera.uid
 
     @property
     def is_on(self) -> bool:
@@ -211,7 +219,7 @@ class NanitCameraEntity(NanitEntity, Camera):
         host = go2rtc.go2rtc_host(entry)
         session = async_get_clientsession(self.hass)
         try:
-            image = await go2rtc.async_get_frame(session, host, self._camera.uid)
+            image = await go2rtc.async_get_frame(session, host, self._stream_name)
         except Exception:  # noqa: BLE001
             _LOGGER.debug("Failed to fetch snapshot for %s", self._camera.uid)
             return None
@@ -236,3 +244,44 @@ class NanitCameraEntity(NanitEntity, Camera):
         except Exception:  # noqa: BLE001
             _LOGGER.debug("Failed to stop streaming before sleep", exc_info=True)
         await self._camera.async_set_settings(sleep_mode=True)
+
+
+class NanitLiteCameraEntity(NanitCameraEntity):
+    """Downscaled companion camera, for displays that can't decode 1080p.
+
+    Reads the add-on's `{uid}_lite` go2rtc stream — a transcode of the same
+    1080p feed, so the camera is still opened only once. Unlike the main camera
+    there is no RTMPS fallback: the lite stream exists only inside the add-on,
+    so if the add-on is unreachable there is nothing to fall back to.
+    """
+
+    _attr_translation_key = "camera_lite"
+    _attr_supported_features = CameraEntityFeature.STREAM
+
+    def __init__(
+        self,
+        coordinator: NanitPushCoordinator,
+        camera: NanitCamera,
+    ) -> None:
+        """Initialize."""
+        super().__init__(coordinator, camera)
+        self._attr_unique_id = f"{camera.uid}_camera_lite"
+
+    @property
+    def _stream_name(self) -> str:
+        """The go2rtc stream this entity reads."""
+        return go2rtc.lite_stream_name(self._camera.uid)
+
+    async def stream_source(self) -> str | None:
+        """Return the add-on's downscaled WebRTC stream, or None."""
+        if not self.is_on:
+            return None
+
+        entry = self.coordinator.config_entry
+        host = go2rtc.go2rtc_host(entry)
+        session = async_get_clientsession(self.hass)
+        if not await go2rtc.async_addon_reachable(session, host):
+            _LOGGER.warning("go2rtc add-on unreachable at %s; no lite stream", host)
+            return None
+
+        return go2rtc.lite_ingest_url(host, self._camera.uid)

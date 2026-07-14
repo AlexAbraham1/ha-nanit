@@ -131,7 +131,8 @@
       "sound_machine": { "name": "Sound Machine" }
     },
     "camera": {
-      "camera": { "name": "Camera" }
+      "camera": { "name": "Camera" },
+      "camera_lite": { "name": "Lite" }
     },
     "button": {
       "start_breathing_tracking": { "name": "Start breathing tracking" }

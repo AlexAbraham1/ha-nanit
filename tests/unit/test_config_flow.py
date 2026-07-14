@@ -21,6 +21,7 @@ from custom_components.nanit.const import (
     CONF_CAMERA_IP,
     CONF_CAMERA_IPS,
     CONF_GO2RTC_HOST,
+    CONF_LITE_CAMERA,
     CONF_MFA_CODE,
     CONF_REFRESH_TOKEN,
     CONF_SPEAKER_IP,
@@ -916,3 +917,44 @@ async def test_options_flow_no_hub_go2rtc_preserves_existing_camera_ips(
     assert entry.options[CONF_SPEAKER_IPS] == {MOCK_BABY_1.camera_uid: "192.168.1.71"}
     assert entry.options[CONF_USE_GO2RTC] is True
     assert entry.options[CONF_GO2RTC_HOST] == "192.168.68.107"
+
+
+async def test_options_flow_sets_lite_camera(hass: HomeAssistant) -> None:
+    """The lite toggle is offered and persisted like the other go2rtc options."""
+    hass = await _resolve_hass(hass)
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_ACCESS_TOKEN: "a", CONF_REFRESH_TOKEN: "r"},
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "init"
+    assert CONF_LITE_CAMERA in result["data_schema"].schema
+
+    result2 = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            CONF_USE_GO2RTC: True,
+            CONF_GO2RTC_HOST: "192.168.68.107",
+            CONF_LITE_CAMERA: True,
+        },
+    )
+    assert result2["type"] == FlowResultType.CREATE_ENTRY
+    assert entry.options[CONF_LITE_CAMERA] is True
+
+
+async def test_options_flow_lite_camera_defaults_off(hass: HomeAssistant) -> None:
+    """The lite toggle defaults to False when not previously set."""
+    hass = await _resolve_hass(hass)
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_ACCESS_TOKEN: "a", CONF_REFRESH_TOKEN: "r"},
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    schema = result["data_schema"].schema
+    key = next(k for k in schema if k == CONF_LITE_CAMERA)
+    assert key.default() is False

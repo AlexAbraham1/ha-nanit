@@ -22,6 +22,7 @@ from .const import (
     CONF_CAMERA_IP,
     CONF_CAMERA_IPS,
     CONF_GO2RTC_HOST,
+    CONF_LITE_CAMERA,
     CONF_MFA_CODE,
     CONF_REFRESH_TOKEN,
     CONF_SPEAKER_IP,
@@ -340,6 +341,10 @@ class NanitOptionsFlow(OptionsFlow):
                 CONF_GO2RTC_HOST,
                 default=opts.get(CONF_GO2RTC_HOST, DEFAULT_GO2RTC_HOST),
             ): cv.string,
+            vol.Optional(
+                CONF_LITE_CAMERA,
+                default=opts.get(CONF_LITE_CAMERA, False),
+            ): cv.boolean,
         }
 
     def _current_go2rtc(self) -> dict[str, Any]:
@@ -348,6 +353,7 @@ class NanitOptionsFlow(OptionsFlow):
         return {
             CONF_USE_GO2RTC: opts.get(CONF_USE_GO2RTC, False),
             CONF_GO2RTC_HOST: opts.get(CONF_GO2RTC_HOST, DEFAULT_GO2RTC_HOST),
+            CONF_LITE_CAMERA: opts.get(CONF_LITE_CAMERA, False),
         }
 
     def _pop_go2rtc(self, user_input: dict[str, Any]) -> dict[str, Any]:
@@ -357,6 +363,8 @@ class NanitOptionsFlow(OptionsFlow):
             data[CONF_USE_GO2RTC] = user_input[CONF_USE_GO2RTC]
         if CONF_GO2RTC_HOST in user_input:
             data[CONF_GO2RTC_HOST] = user_input[CONF_GO2RTC_HOST]
+        if CONF_LITE_CAMERA in user_input:
+            data[CONF_LITE_CAMERA] = user_input[CONF_LITE_CAMERA]
         return data
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:

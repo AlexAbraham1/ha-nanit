@@ -53,7 +53,8 @@
         "title": "Nanit Options",
         "description": "Select a camera to configure its local IP address.",
         "data": {
-          "camera": "Camera"
+          "camera": "Camera",
+          "lite_camera": "Add a low-bandwidth companion camera (640x360, for old displays that can't decode 1080p)"
         }
       },
       "camera_ip": {
@@ -61,7 +62,8 @@
         "description": "Enter local IP addresses for **{camera_name}** for local-first connectivity. Leave blank to use cloud only.",
         "data": {
           "camera_ip": "Camera IP Address",
-          "speaker_ip": "Sound & Light Machine IP Address"
+          "speaker_ip": "Sound & Light Machine IP Address",
+          "lite_camera": "Add a low-bandwidth companion camera (640x360, for old displays that can't decode 1080p)"
         }
       }
     }

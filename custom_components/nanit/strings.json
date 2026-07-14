@@ -55,7 +55,8 @@
         "data": {
           "camera": "Camera",
           "use_go2rtc": "Use the go2rtc WebRTC add-on (low-latency direct-LAN stream)",
-          "go2rtc_host": "go2rtc add-on host (IP or hostname)"
+          "go2rtc_host": "go2rtc add-on host (IP or hostname)",
+          "lite_camera": "Add a low-bandwidth companion camera (640x360, for old displays that can't decode 1080p)"
         }
       },
       "camera_ip": {
@@ -65,7 +66,8 @@
           "camera_ip": "Camera IP Address",
           "speaker_ip": "Sound & Light Machine IP Address",
           "use_go2rtc": "Use the go2rtc WebRTC add-on (low-latency direct-LAN stream)",
-          "go2rtc_host": "go2rtc add-on host (IP or hostname)"
+          "go2rtc_host": "go2rtc add-on host (IP or hostname)",
+          "lite_camera": "Add a low-bandwidth companion camera (640x360, for old displays that can't decode 1080p)"
         }
       }
     }

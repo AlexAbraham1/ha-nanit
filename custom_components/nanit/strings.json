@@ -95,6 +95,22 @@
       "humidity": { "name": "Humidity" },
       "light": { "name": "Light Level" },
       "breaths_per_minute": { "name": "Breaths Per Minute" },
+      "breathing_state": {
+        "name": "Breathing state",
+        "state": {
+          "lack_texture": "Reading…",
+          "normal": "Breathing normally",
+          "wiggling": "Baby is moving",
+          "no_pattern": "No pattern",
+          "no_breathing": "No breathing detected",
+          "low_bpm": "Low breathing rate",
+          "high_bpm": "High breathing rate",
+          "init": "Calibrating…",
+          "pattern_found": "Pattern found",
+          "baby_not_in_bed": "Baby not in bed",
+          "unknown": "Unknown"
+        }
+      },
       "sl_temperature": { "name": "Temperature" },
       "sl_humidity": { "name": "Humidity" },
       "sl_connection_mode": {

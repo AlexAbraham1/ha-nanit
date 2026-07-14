@@ -35,6 +35,19 @@ from .entity import (
 
 PARALLEL_UPDATES = 0
 
+_EBREATHING = {
+    0: "lack_texture",
+    1: "normal",
+    2: "wiggling",
+    3: "no_pattern",
+    4: "no_breathing",
+    5: "low_bpm",
+    6: "high_bpm",
+    7: "init",
+    8: "pattern_found",
+    9: "baby_not_in_bed",
+}
+
 
 @dataclass(frozen=True, kw_only=True)
 class NanitSensorEntityDescription(SensorEntityDescription):
@@ -153,6 +166,7 @@ async def async_setup_entry(
             entities.append(NanitSensor(cam_data.push_coordinator, description))
 
         entities.append(NanitBreathingRateSensor(cam_data.push_coordinator))
+        entities.append(NanitBreathingStateSensor(cam_data.push_coordinator))
 
         # Sound & Light Machine sensors (optional)
         sl_coordinator = cam_data.sound_light_coordinator
@@ -224,6 +238,40 @@ class NanitBreathingRateSensor(NanitEntity, SensorEntity):
             return None
         bpm: int | None = self.coordinator.data.breathing.breaths_per_minute
         return bpm
+
+
+class NanitBreathingStateSensor(NanitEntity, SensorEntity):
+    """The Nanit breathing state phrase (EBreathing).
+
+    E.g. normal / wiggling / no_breathing. Available only while a tracking
+    session is pushing frames. Convenience mirror of the app — not a safety
+    device.
+    """
+
+    _attr_translation_key = "breathing_state"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_icon = "mdi:lungs"
+    _attr_options = [*_EBREATHING.values(), "unknown"]  # noqa: RUF012
+
+    def __init__(self, coordinator: NanitPushCoordinator) -> None:
+        """Initialize."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.camera.uid}_breathing_state"
+
+    @property
+    def available(self) -> bool:
+        """Available only while a fresh breathing reading is being pushed."""
+        return super().available and breathing_is_fresh(self.coordinator.data)
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the breathing-state phrase."""
+        if self.coordinator.data is None:
+            return None
+        code = self.coordinator.data.breathing.breathing
+        if code is None:
+            return None
+        return _EBREATHING.get(code, "unknown")
 
 
 class NanitSLSensor(NanitSoundLightEntity, SensorEntity):

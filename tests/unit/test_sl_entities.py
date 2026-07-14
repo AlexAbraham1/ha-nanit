@@ -922,8 +922,9 @@ async def test_sensor_async_setup_entry_creates_sl_sensors() -> None:
     await sensor_platform.async_setup_entry(MagicMock(), entry, async_add_entities)
 
     entities = async_add_entities.call_args.args[0]
-    # 3 camera sensors + 1 breathing rate + 2 S&L sensors + 1 connection mode = 7
-    assert len(entities) == 7
+    # 3 camera sensors + 1 breathing rate + 1 breathing state + 2 S&L sensors
+    # + 1 connection mode = 8
+    assert len(entities) == 8
 
 
 async def test_number_async_setup_entry_creates_sl_volume() -> None:

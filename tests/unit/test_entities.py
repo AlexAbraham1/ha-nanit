@@ -57,7 +57,12 @@ from custom_components.nanit.coordinator import (
 )
 from custom_components.nanit.media_player import NanitMediaPlayer
 from custom_components.nanit.select import NanitSoundTimerSelect
-from custom_components.nanit.sensor import SENSORS, NanitBreathingRateSensor, NanitSensor
+from custom_components.nanit.sensor import (
+    SENSORS,
+    NanitBreathingRateSensor,
+    NanitBreathingStateSensor,
+    NanitSensor,
+)
 from custom_components.nanit.switch import SWITCHES, NanitSwitch
 
 from .conftest import MOCK_BABY_1
@@ -294,8 +299,44 @@ def test_breathing_alert_reflects_flag_and_freshness() -> None:
     assert stale.available is False
 
 
-def test_breathing_tracking_binary_sensor_on_iff_fresh_and_measuring() -> None:
-    """binary_sensor.breathing_tracking is ON iff a fresh session is measuring."""
+def test_breathing_alert_reflects_mode_red() -> None:
+    """binary_sensor.breathing_alert reflects the derived RED mode (EStingMode==2),
+    not a raw wire alert flag."""
+    red = replace(
+        _camera_state(),
+        breathing=BreathingState(mode=2, breathing=4, received_at=time.time()),
+    )
+    on = NanitBreathingAlertBinarySensor(_push_coordinator(red))
+    assert on.is_on is True
+
+    green = replace(
+        _camera_state(),
+        breathing=BreathingState(mode=0, breathing=1, received_at=time.time()),
+    )
+    off = NanitBreathingAlertBinarySensor(_push_coordinator(green))
+    assert off.is_on is False
+
+
+def test_breathing_state_sensor_maps_enum() -> None:
+    """sensor.breathing_state maps the EBreathing wire code to its phrase,
+    falling back to "unknown" for an out-of-range code."""
+    wiggling = replace(
+        _camera_state(),
+        breathing=BreathingState(breathing=2, received_at=time.time()),
+    )
+    entity = NanitBreathingStateSensor(_push_coordinator(wiggling))
+    assert entity.native_value == "wiggling"
+
+    unknown = replace(
+        _camera_state(),
+        breathing=BreathingState(breathing=99, received_at=time.time()),
+    )
+    unknown_entity = NanitBreathingStateSensor(_push_coordinator(unknown))
+    assert unknown_entity.native_value == "unknown"
+
+
+def test_breathing_tracking_binary_sensor_on_iff_fresh() -> None:
+    """binary_sensor.breathing_tracking is ON iff a fresh breathing reading is present."""
     on = NanitBreathingTrackingBinarySensor(_push_coordinator(_breathing_state()))
     stale = NanitBreathingTrackingBinarySensor(_push_coordinator(_breathing_state(age_seconds=999)))
 

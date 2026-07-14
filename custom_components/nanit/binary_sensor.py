@@ -149,14 +149,16 @@ class NanitBinarySensor(NanitEntity, BinarySensorEntity):
 
 
 class NanitBreathingAlertBinarySensor(NanitEntity, BinarySensorEntity):
-    """Breathing Motion Monitoring red-alert from Nanit.
+    """Breathing Motion Monitoring RED alert from Nanit.
 
-    ON when the camera reports a breathing-motion alert during an active
-    tracking session. Only available while a fresh reading is being pushed, so
-    it does not sit at "clear" implying monitoring when none is running.
+    ON when the camera's STING subsystem reports EStingMode RED (mode == 2)
+    during an active tracking session — i.e. ``BreathingState.is_alert``. Only
+    available while a fresh reading is being pushed, so it does not sit at
+    "clear" implying monitoring when none is running.
 
-    This mirrors the app for convenience/automation. The Nanit app remains the
-    safety-critical alerting path — do not rely on this entity for that.
+    This is a display-only convenience mirror of the app for
+    dashboards/automation. The Nanit app remains the safety-critical alerting
+    path — do not rely on this entity for that.
     """
 
     _attr_translation_key = "breathing_alert"

@@ -20,6 +20,7 @@ from .const import (
     DEFAULT_GO2RTC_HOST,
     GO2RTC_API_PORT,
     GO2RTC_LITE_SOURCE_TEMPLATE,
+    GO2RTC_RTSP_PORT,
     LOGGER,
 )
 
@@ -43,13 +44,19 @@ def build_source_url(camera_uid: str, access_token: str) -> str:
 def ingest_url(host: str, camera_uid: str) -> str:
     """Return the URL HA's built-in go2rtc ingests for this camera.
 
-    Uses the go2rtc-to-go2rtc ``webrtc:`` transport (not RTSP). Verified on the
-    box: the add-on's RTSP server binds 127.0.0.1 only (unreachable across
-    containers) and RTSP dropped the media, whereas the ``webrtc:`` source pulls
-    H264 video + OPUS audio intact from the add-on. ``GO2RTC_RTSP_PORT`` is kept
-    for reference/diagnostics only.
+    MUST be an ``rtsp://`` URL. HA's go2rtc integration only registers itself as
+    the WebRTC provider for stream sources whose scheme it recognises; a
+    ``webrtc:`` source is refused, so the camera silently drops to HLS — and HLS
+    then hands the same ``webrtc:`` URL to the ffmpeg stream worker, which fails
+    with "Protocol not found" and renders a blank card. RTSP is accepted by both
+    paths.
+
+    An earlier attempt at RTSP appeared to "drop the media", but that pointed at
+    :18554 — which is HA's *bundled* go2rtc RTSP port, not the add-on's. The
+    add-on listens on ``GO2RTC_RTSP_PORT`` (18654) precisely to avoid that
+    collision; verified serving H264 + OPUS for both streams.
     """
-    return f"webrtc:http://{host}:{GO2RTC_API_PORT}/api/webrtc?src={camera_uid}"
+    return f"rtsp://{host}:{GO2RTC_RTSP_PORT}/{camera_uid}"
 
 
 async def async_push_stream(

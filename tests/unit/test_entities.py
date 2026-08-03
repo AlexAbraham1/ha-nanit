@@ -1058,7 +1058,7 @@ async def test_stream_source_uses_go2rtc_when_enabled_and_reachable(hass) -> Non
         AsyncMock(return_value=True),
     ):
         url = await ent.stream_source()
-    assert url == "webrtc:http://hostx:11984/api/webrtc?src=CAM1"
+    assert url == "rtsp://hostx:18654/CAM1"
 
 
 async def test_stream_source_falls_back_to_rtmps_when_unreachable(hass) -> None:
@@ -1233,10 +1233,7 @@ async def test_lite_camera_stream_source_is_lite_ingest(hass) -> None:
         "custom_components.nanit.camera.go2rtc.async_addon_reachable",
         AsyncMock(return_value=True),
     ):
-        assert (
-            await entity.stream_source()
-            == "webrtc:http://192.168.68.107:11984/api/webrtc?src=CAM1_lite"
-        )
+        assert await entity.stream_source() == "rtsp://192.168.68.107:18654/CAM1_lite"
 
 
 async def test_lite_camera_no_rtmps_fallback(hass) -> None:

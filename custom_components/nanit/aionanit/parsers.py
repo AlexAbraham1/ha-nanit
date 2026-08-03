@@ -33,6 +33,20 @@ _MOUNTING_MODE_MAP: dict[int, str] = {
 }
 
 
+# The camera reports -1000 for temperature (°C) and humidity (%) when its
+# environmental sensor read fails — a sentinel, not a reading. Publishing it
+# verbatim surfaces as -1768 °F / -1000 % on the dashboard, which reads as a
+# real (alarming) measurement rather than "no data". Map it to None so the
+# entity goes unknown instead. Both channels come off the same chip and fail
+# together; light is a separate subsystem and keeps reporting normally.
+_SENSOR_FAULT_SENTINEL = -1000.0
+
+
+def _reject_sentinel(value: float) -> float | None:
+    """Return None if the camera reported its sensor-fault sentinel."""
+    return None if value == _SENSOR_FAULT_SENTINEL else value
+
+
 def _parse_sensor_data(
     sensor_data_list: list[SensorData],
     current: SensorState,
@@ -49,14 +63,14 @@ def _parse_sensor_data(
     for sd in sensor_data_list:
         if sd.sensor_type == ProtoSensorType.TEMPERATURE:
             if sd.value_milli:
-                temperature = sd.value_milli / 1000.0
+                temperature = _reject_sentinel(sd.value_milli / 1000.0)
             elif sd.value:
-                temperature = float(sd.value)
+                temperature = _reject_sentinel(float(sd.value))
         elif sd.sensor_type == ProtoSensorType.HUMIDITY:
             if sd.value_milli:
-                humidity = sd.value_milli / 1000.0
+                humidity = _reject_sentinel(sd.value_milli / 1000.0)
             elif sd.value:
-                humidity = float(sd.value)
+                humidity = _reject_sentinel(float(sd.value))
         elif sd.sensor_type == ProtoSensorType.LIGHT:
             light = sd.value
         elif sd.sensor_type == ProtoSensorType.SOUND:

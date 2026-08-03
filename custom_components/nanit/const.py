@@ -66,7 +66,10 @@ DEFAULT_SOUND_MACHINE_SOUNDS = (
 CONF_USE_GO2RTC = "use_go2rtc"
 CONF_GO2RTC_HOST = "go2rtc_host"
 GO2RTC_API_PORT = 11984
-GO2RTC_RTSP_PORT = 18554
+# The add-on's RTSP listener. Deliberately NOT 18554 — that is HA's bundled
+# go2rtc's RTSP port, so binding there makes the add-on's listener fail and any
+# rtsp:// ingest silently hit the wrong server.
+GO2RTC_RTSP_PORT = 18654
 DEFAULT_GO2RTC_HOST = "homeassistant.local"
 
 # Downscaled companion stream for low-power displays (e.g. an old kiosk tablet

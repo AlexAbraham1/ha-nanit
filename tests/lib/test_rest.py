@@ -206,6 +206,12 @@ class TestRefreshToken:
             with pytest.raises(NanitAuthError, match="token revoked"):
                 await client.async_refresh_token("acc", "ref")
 
+    async def test_refresh_server_error(self, client: NanitRestClient) -> None:
+        with aioresponses() as m:
+            m.post(REFRESH_URL, status=503, payload={})
+            with pytest.raises(NanitConnectionError, match="HTTP 503"):
+                await client.async_refresh_token("acc", "ref")
+
 
 class TestGetBabies:
     async def test_get_babies_success(self, client: NanitRestClient) -> None:
@@ -294,6 +300,17 @@ class TestGetBabies:
 
             with pytest.raises(NanitAuthError):
                 await client.async_get_babies("bad_token")
+
+    async def test_get_babies_server_error(self, client: NanitRestClient) -> None:
+        """A 5xx from Nanit's cloud is a connection error, not a crash.
+
+        Regression: 2026-09-06 a 502 on /babies escaped as a raw
+        ClientResponseError and left the config entry in setup_error.
+        """
+        with aioresponses() as m:
+            m.get(BABIES_URL, status=502)
+            with pytest.raises(NanitConnectionError, match="HTTP 502"):
+                await client.async_get_babies("tok")
 
 
 class TestGetEvents:

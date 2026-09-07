@@ -71,6 +71,21 @@ NANIT_API_HEADERS: dict[str, str] = {
 }
 
 
+def _raise_for_status(resp: aiohttp.ClientResponse) -> None:
+    """Map an unexpected HTTP status to NanitConnectionError.
+
+    ``resp.raise_for_status()`` raises ``aiohttp.ClientResponseError`` for any
+    4xx/5xx. Left unwrapped, a transient 502/503 from api.nanit.com escapes
+    ``async_setup_entry`` as a bare exception, which Home Assistant records as
+    a permanent ``setup_error`` and never retries. Wrapping it as a connection
+    error turns it into ``ConfigEntryNotReady`` with automatic retry.
+    """
+    try:
+        resp.raise_for_status()
+    except aiohttp.ClientResponseError as err:
+        raise NanitConnectionError(f"HTTP {err.status} from {err.request_info.url}") from err
+
+
 class NanitRestClient:
     """Async HTTP client for the Nanit cloud REST API.
 
@@ -145,7 +160,7 @@ class NanitRestClient:
         if error_msg:
             raise NanitAuthError(error_msg)
 
-        resp.raise_for_status()
+        _raise_for_status(resp)
 
         return {
             "access_token": body["access_token"],
@@ -179,7 +194,7 @@ class NanitRestClient:
         if error_msg:
             raise NanitAuthError(error_msg)
 
-        resp.raise_for_status()
+        _raise_for_status(resp)
 
         return {
             "access_token": body["access_token"],
@@ -202,7 +217,7 @@ class NanitRestClient:
         if resp.status == 401:
             raise NanitAuthError("Access token invalid")
 
-        resp.raise_for_status()
+        _raise_for_status(resp)
         body = await resp.json()
 
         return [
@@ -248,7 +263,7 @@ class NanitRestClient:
         if resp.status == 401:
             raise NanitAuthError("Access token invalid")
 
-        resp.raise_for_status()
+        _raise_for_status(resp)
         body = await resp.json(content_type=None)
         token: str | None = body.get("user_device_token", {}).get("token")
         if not token:
@@ -274,7 +289,7 @@ class NanitRestClient:
         if resp.status == 401:
             raise NanitAuthError("Access token invalid")
 
-        resp.raise_for_status()
+        _raise_for_status(resp)
         body = await resp.json()
 
         return [

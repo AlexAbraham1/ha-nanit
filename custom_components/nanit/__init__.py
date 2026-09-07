@@ -14,7 +14,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .aionanit.exceptions import NanitAuthError, NanitConnectionError
+from .aionanit.exceptions import NanitAuthError, NanitConnectionError, NanitError
 from .const import (
     CONF_BABY_NAME,
     CONF_BABY_UID,
@@ -54,7 +54,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: NanitConfigEntry) -> boo
             translation_key="auth_failed",
             translation_placeholders={"error": str(err)},
         ) from err
-    except NanitConnectionError as err:
+    except (NanitConnectionError, NanitError) as err:
+        # Any other library error during setup (request timeout, transport
+        # failure) is transient too: retry with backoff rather than a
+        # permanent setup_error.
         raise ConfigEntryNotReady(
             translation_domain=DOMAIN,
             translation_key="connection_failed",

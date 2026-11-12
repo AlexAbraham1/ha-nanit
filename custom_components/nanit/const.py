@@ -78,7 +78,11 @@ DEFAULT_GO2RTC_HOST = "homeassistant.local"
 # once and the transcode runs only while someone is watching the lite stream.
 # `#audio=copy` is mandatory: go2rtc's ffmpeg source drops audio unless asked,
 # and the source OPUS is passed through untouched.
+#
+# Software encode on purpose (no `#hardware=...`). The template used to force
+# `#hardware=vaapi`, which only works where the go2rtc add-on can open /dev/dri.
+# When HA moved into a KVM guest (2026-11-12) there was no GPU, ffmpeg exited
+# with "No device available for decoder: device type vaapi needed", and the lite
+# stream served empty frames. A 640x360 x264 encode is cheap on any modern CPU.
 CONF_LITE_CAMERA = "lite_camera"
-GO2RTC_LITE_SOURCE_TEMPLATE = (
-    "ffmpeg:{camera_uid}#video=h264#width=640#height=360#hardware=vaapi#audio=copy"
-)
+GO2RTC_LITE_SOURCE_TEMPLATE = "ffmpeg:{camera_uid}#video=h264#width=640#height=360#audio=copy"

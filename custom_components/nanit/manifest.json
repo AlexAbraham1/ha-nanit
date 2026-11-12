@@ -1,7 +1,7 @@
 {
   "domain": "nanit",
   "name": "Nanit",
-  "version": "1.13.2",
+  "version": "1.13.3",
   "homeassistant": "2026.5.0",
   "documentation": "https://github.com/wealthystudent/ha-nanit",
   "issue_tracker": "https://github.com/wealthystudent/ha-nanit/issues",

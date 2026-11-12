@@ -47,6 +47,13 @@ CONF_CAMERA_IPS = "camera_ips"
 CONF_SPEAKER_UID = "speaker_uid"
 CONF_SPEAKER_IP = "speaker_ip"
 CONF_SPEAKER_IPS = "speaker_ips"
+# Cameras on the account that the integration must not connect to — e.g. one that
+# is never plugged in. Without this, every setup waits out the connect timeout for
+# it, raises a repair issue, and delays Home Assistant's startup.
+# CONF_IGNORE_CAMERA is the per-camera checkbox in the options flow;
+# CONF_IGNORED_CAMERAS is the stored list of camera UIDs.
+CONF_IGNORE_CAMERA = "ignore_camera"
+CONF_IGNORED_CAMERAS = "ignored_cameras"
 
 # Default sound list (used when API doesn't return available_sounds)
 DEFAULT_SOUND_MACHINE_SOUNDS = (

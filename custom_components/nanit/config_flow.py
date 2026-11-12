@@ -22,6 +22,8 @@ from .const import (
     CONF_CAMERA_IP,
     CONF_CAMERA_IPS,
     CONF_GO2RTC_HOST,
+    CONF_IGNORE_CAMERA,
+    CONF_IGNORED_CAMERAS,
     CONF_LITE_CAMERA,
     CONF_MFA_CODE,
     CONF_REFRESH_TOKEN,
@@ -448,11 +450,22 @@ class NanitOptionsFlow(OptionsFlow):
                 go2rtc_data = self._current_go2rtc()
                 go2rtc_data.update(self._pop_go2rtc(user_input))
 
+                # Rebuild the ignore list: every other camera keeps its flag, this
+                # one follows the checkbox.
+                ignored = [
+                    uid
+                    for uid in self.config_entry.options.get(CONF_IGNORED_CAMERAS, [])
+                    if uid != self._selected_camera_uid
+                ]
+                if user_input.get(CONF_IGNORE_CAMERA, False):
+                    ignored.append(self._selected_camera_uid)
+
                 return self.async_create_entry(
                     title="",
                     data={
                         CONF_CAMERA_IPS: current_ips,
                         CONF_SPEAKER_IPS: current_speaker_ips,
+                        CONF_IGNORED_CAMERAS: ignored,
                         **go2rtc_data,
                     },
                 )
@@ -480,6 +493,11 @@ class NanitOptionsFlow(OptionsFlow):
                 CONF_SPEAKER_IP,
                 description={"suggested_value": current_speaker_ip},
             ): cv.string,
+            vol.Optional(
+                CONF_IGNORE_CAMERA,
+                default=self._selected_camera_uid
+                in self.config_entry.options.get(CONF_IGNORED_CAMERAS, []),
+            ): cv.boolean,
         }
         schema.update(self._go2rtc_schema_dict())
 

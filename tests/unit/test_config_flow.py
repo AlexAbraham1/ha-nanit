@@ -21,6 +21,8 @@ from custom_components.nanit.const import (
     CONF_CAMERA_IP,
     CONF_CAMERA_IPS,
     CONF_GO2RTC_HOST,
+    CONF_IGNORE_CAMERA,
+    CONF_IGNORED_CAMERAS,
     CONF_LITE_CAMERA,
     CONF_MFA_CODE,
     CONF_REFRESH_TOKEN,
@@ -958,3 +960,52 @@ async def test_options_flow_lite_camera_defaults_off(hass: HomeAssistant) -> Non
     schema = result["data_schema"].schema
     key = next(k for k in schema if k == CONF_LITE_CAMERA)
     assert key.default() is False
+
+
+async def _open_camera_step(hass: HomeAssistant, entry: MockConfigEntry, camera_uid: str) -> str:
+    """Open the options flow on a two-camera entry and pick ``camera_uid``."""
+    entry.runtime_data = SimpleNamespace(hub=SimpleNamespace(babies=[MOCK_BABY_1, MOCK_BABY_2]))
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"camera": camera_uid}
+    )
+    assert result.get("step_id") == "camera_ip"
+    return cast(str, result["flow_id"])
+
+
+async def test_options_flow_camera_ip_ignores_camera(hass: HomeAssistant) -> None:
+    hass = await _resolve_hass(hass)
+    entry = MockConfigEntry(domain=DOMAIN, options={})
+    flow_id = await _open_camera_step(hass, entry, MOCK_BABY_2.camera_uid)
+
+    result = await hass.config_entries.options.async_configure(flow_id, {CONF_IGNORE_CAMERA: True})
+
+    result_data = _as_dict(result)
+    assert result_data.get("type") is FlowResultType.CREATE_ENTRY
+    assert result_data["data"][CONF_IGNORED_CAMERAS] == [MOCK_BABY_2.camera_uid]
+
+
+async def test_options_flow_camera_ip_unignores_camera(hass: HomeAssistant) -> None:
+    hass = await _resolve_hass(hass)
+    entry = MockConfigEntry(domain=DOMAIN, options={CONF_IGNORED_CAMERAS: [MOCK_BABY_2.camera_uid]})
+    flow_id = await _open_camera_step(hass, entry, MOCK_BABY_2.camera_uid)
+
+    result = await hass.config_entries.options.async_configure(flow_id, {CONF_IGNORE_CAMERA: False})
+
+    assert _as_dict(result)["data"][CONF_IGNORED_CAMERAS] == []
+
+
+async def test_options_flow_camera_ip_keeps_other_cameras_ignored(hass: HomeAssistant) -> None:
+    """Editing one camera must not drop another camera's ignore flag."""
+    hass = await _resolve_hass(hass)
+    entry = MockConfigEntry(domain=DOMAIN, options={CONF_IGNORED_CAMERAS: [MOCK_BABY_2.camera_uid]})
+    flow_id = await _open_camera_step(hass, entry, MOCK_BABY_1.camera_uid)
+
+    result = await hass.config_entries.options.async_configure(
+        flow_id, {CONF_CAMERA_IP: "192.168.1.25"}
+    )
+
+    result_data = _as_dict(result)
+    assert result_data["data"][CONF_IGNORED_CAMERAS] == [MOCK_BABY_2.camera_uid]
+    assert result_data["data"][CONF_CAMERA_IPS] == {MOCK_BABY_1.camera_uid: "192.168.1.25"}

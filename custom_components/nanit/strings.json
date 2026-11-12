@@ -65,6 +65,7 @@
         "data": {
           "camera_ip": "Camera IP Address",
           "speaker_ip": "Sound & Light Machine IP Address",
+          "ignore_camera": "Ignore this camera (never connect to it — for a camera that stays unplugged)",
           "use_go2rtc": "Use the go2rtc WebRTC add-on (low-latency direct-LAN stream)",
           "go2rtc_host": "go2rtc add-on host (IP or hostname)",
           "lite_camera": "Add a low-bandwidth companion camera (640x360, for old displays that can't decode 1080p)"

@@ -26,7 +26,13 @@ from .aionanit.exceptions import (
 )
 from .aionanit.models import Baby
 from .aionanit_sl.sound_light import NanitSoundLight
-from .const import CONF_CAMERA_IPS, CONF_REFRESH_TOKEN, CONF_SPEAKER_IPS, DOMAIN
+from .const import (
+    CONF_CAMERA_IPS,
+    CONF_IGNORED_CAMERAS,
+    CONF_REFRESH_TOKEN,
+    CONF_SPEAKER_IPS,
+    DOMAIN,
+)
 from .coordinator import (
     NanitCloudCoordinator,
     NanitNetworkCoordinator,
@@ -128,6 +134,20 @@ class NanitHub:
         if not babies:
             _LOGGER.warning("No babies/cameras found on Nanit account")
             return
+
+        # Drop cameras the user asked us to ignore. They stay in self._babies so
+        # the options flow can still list them and un-ignore one later.
+        ignored = set(self._entry.options.get(CONF_IGNORED_CAMERAS, []))
+        if ignored:
+            for baby in babies:
+                if baby.camera_uid in ignored:
+                    ir.async_delete_issue(
+                        self._hass, DOMAIN, f"camera_connection_failed_{baby.camera_uid}"
+                    )
+            babies = [baby for baby in babies if baby.camera_uid not in ignored]
+            _LOGGER.info("Ignoring %d camera(s) per options", len(self._babies) - len(babies))
+            if not babies:
+                return
 
         # Discover speaker UIDs — try persisted data first, then aionanit,
         # then raw /babies API as final fallback.

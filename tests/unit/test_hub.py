@@ -8,7 +8,12 @@ from homeassistant.const import CONF_ACCESS_TOKEN
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.nanit.const import CONF_CAMERA_IPS, CONF_REFRESH_TOKEN, DOMAIN
+from custom_components.nanit.const import (
+    CONF_CAMERA_IPS,
+    CONF_IGNORED_CAMERAS,
+    CONF_REFRESH_TOKEN,
+    DOMAIN,
+)
 from custom_components.nanit.hub import NanitHub
 
 from .conftest import (
@@ -563,3 +568,46 @@ async def test_token_refresh_pushes_go2rtc(hass, mock_nanit_client) -> None:
             await hass.async_block_till_done()
     assert push.await_count >= 1
     assert push.await_args_list[0].args[3] == "new_access"
+
+
+async def test_setup_skips_ignored_cameras(hass: HomeAssistant, mock_nanit_client) -> None:
+    """An ignored camera is never connected to, but stays listed for the options flow."""
+    mock_nanit_client.async_get_babies.return_value = [MOCK_BABY_1, MOCK_BABY_2]
+    mock_nanit_client.camera.side_effect = lambda **kw: _make_mock_camera(kw["uid"], kw["baby_uid"])
+
+    entry = _make_entry(hass, options={CONF_IGNORED_CAMERAS: [MOCK_BABY_2.camera_uid]})
+    hub = NanitHub(hass, MagicMock(), entry)
+
+    with (
+        patch("custom_components.nanit.hub.NanitPushCoordinator") as push_cls,
+        patch("custom_components.nanit.hub.NanitCloudCoordinator") as cloud_cls,
+        patch("custom_components.nanit.hub.NanitNetworkCoordinator") as net_cls,
+        patch("custom_components.nanit.hub.ir.async_create_issue") as mock_create_issue,
+    ):
+        push_cls.return_value = MagicMock(async_setup=AsyncMock())
+        cloud_cls.return_value = MagicMock(async_config_entry_first_refresh=AsyncMock())
+        net_cls.return_value = MagicMock(async_config_entry_first_refresh=AsyncMock())
+        await hub.async_setup()
+
+    assert set(hub.camera_data) == {MOCK_BABY_1.camera_uid}
+    assert [baby.camera_uid for baby in hub.babies] == [
+        MOCK_BABY_1.camera_uid,
+        MOCK_BABY_2.camera_uid,
+    ]
+    mock_create_issue.assert_not_called()
+    created = [call.kwargs["uid"] for call in mock_nanit_client.camera.call_args_list]
+    assert MOCK_BABY_2.camera_uid not in created
+
+
+async def test_setup_with_every_camera_ignored_sets_up_nothing(
+    hass: HomeAssistant, mock_nanit_client
+) -> None:
+    """Ignoring the only camera is not an error: no cameras, no exception."""
+    entry = _make_entry(hass, options={CONF_IGNORED_CAMERAS: [MOCK_BABY_1.camera_uid]})
+    hub = NanitHub(hass, MagicMock(), entry)
+
+    await hub.async_setup()
+
+    assert hub.camera_data == {}
+    assert [baby.camera_uid for baby in hub.babies] == [MOCK_BABY_1.camera_uid]
+    mock_nanit_client.camera.assert_not_called()
